@@ -1,6 +1,6 @@
 import React from 'react';
 import { Account } from '../types';
-import { Plus, User, CheckCircle2, Trash2, LogOut } from 'lucide-react';
+import { Plus, User, CheckCircle2, Trash2, LogOut, Command } from 'lucide-react';
 
 interface SidebarProps {
   accounts: Account[];
@@ -24,8 +24,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           Your Accounts
         </h2>
         <div className="space-y-1">
-          {accounts.map((account) => {
+          {accounts.map((account, index) => {
             const isActive = activeAccountId === account.id;
+            const shortcutNumber = index + 1;
+            const showShortcut = shortcutNumber <= 9;
+
             return (
               <div
                 key={account.id}
@@ -36,8 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     : 'hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                 }`}
               >
-                <div className="flex items-center space-x-3 overflow-hidden">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm ${account.avatarColor}`}>
+                <div className="flex items-center space-x-3 overflow-hidden flex-1">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0 ${account.avatarColor}`}>
                     {account.name.substring(0, 2).toUpperCase()}
                   </div>
                   <div className="flex flex-col min-w-0">
@@ -48,18 +51,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 </div>
                 
-                {isActive && (
-                   <CheckCircle2 size={16} className="text-white shrink-0" />
-                )}
-                
-                {!isActive && (
-                    <button 
-                        onClick={(e) => onDeleteAccount(account.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 hover:text-red-500 transition-all"
-                    >
-                        <Trash2 size={14} />
-                    </button>
-                )}
+                {/* Right side icons/shortcuts */}
+                <div className="flex items-center pl-2">
+                    {showShortcut && !isActive && (
+                        <span className="hidden group-hover:flex items-center text-[10px] font-medium opacity-50 mr-2 border border-gray-400/30 px-1 rounded">
+                            ⌘{shortcutNumber}
+                        </span>
+                    )}
+
+                    {isActive && (
+                    <CheckCircle2 size={16} className="text-white shrink-0" />
+                    )}
+                    
+                    {!isActive && (
+                        <button 
+                            onClick={(e) => onDeleteAccount(account.id, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 hover:text-red-500 transition-all"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    )}
+                </div>
               </div>
             );
           })}

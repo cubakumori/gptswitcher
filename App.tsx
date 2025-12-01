@@ -30,6 +30,37 @@ const App: React.FC = () => {
     }
   }, [accounts]);
 
+  // Global Hotkeys Listener (Cmd+1...9)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Cmd (Mac) or Ctrl (Windows) key
+      if (e.metaKey || e.ctrlKey) {
+        // Parse the key pressed
+        const key = parseInt(e.key);
+        
+        // If it is a number between 1 and 9
+        if (!isNaN(key) && key > 0 && key <= 9) {
+          const index = key - 1;
+          
+          // Check if we have an account at this index
+          if (index < accounts.length) {
+            e.preventDefault(); // Prevent default browser behavior
+            handleSwitchAccount(accounts[index].id);
+          }
+        }
+        
+        // Shortcut to Add Account (Cmd+N)
+        if (e.key.toLowerCase() === 'n') {
+             e.preventDefault();
+             setViewState(ViewState.ADD);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [accounts]); // Re-bind when accounts change so we have the latest list
+
   const handleSwitchAccount = (id: string) => {
     setActiveAccountId(id);
     setViewState(ViewState.LIST);
@@ -65,9 +96,9 @@ const App: React.FC = () => {
       ));
   };
 
-  const handleDeleteAccount = (id: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      const confirm = window.confirm("Are you sure you want to remove this account?");
+  const handleDeleteAccount = (id: string, e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
+      const confirm = window.confirm("Are you sure you want to remove this account? This will clear its settings from the app.");
       if (!confirm) return;
 
       const updated = accounts.filter(a => a.id !== id);
@@ -115,6 +146,7 @@ const App: React.FC = () => {
           <AccountDetail 
               account={activeAccount} 
               onUpdate={handleUpdateAccount}
+              onDelete={(id) => handleDeleteAccount(id)}
           />
         )}
 
