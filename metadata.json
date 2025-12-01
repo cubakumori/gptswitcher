@@ -1,0 +1,5 @@
+{
+  "name": "GPTSwitcher for Mac",
+  "description": "A macOS-styled desktop application simulator to manage and switch between multiple ChatGPT accounts efficiently.",
+  "requestFramePermissions": []
+}

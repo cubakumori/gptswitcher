@@ -1,0 +1,36 @@
+{
+  "name": "gpt-switcher-mac",
+  "productName": "GPT Switcher",
+  "version": "1.0.0",
+  "description": "Desktop manager for ChatGPT accounts",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "dist": "vite build && electron-builder"
+  },
+  "dependencies": {
+    "lucide-react": "^0.300.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "electron": "^39.2.4",
+    "electron-builder": "^24.9.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.2.4"
+  },
+  "build": {
+    "appId": "com.gptswitcher.app",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": "dmg",
+      "icon": "icon.icns"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js"
+    ]
+  }
+}
