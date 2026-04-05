@@ -36,6 +36,7 @@
     "files": [
       "dist/**/*",
       "main.js",
+      "preload.js",
       "package.json",
       "!**/node_modules/**/*",
       "!**/*.ts",

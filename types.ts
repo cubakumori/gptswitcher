@@ -25,9 +25,11 @@ export const AVATAR_COLORS = [
   'bg-teal-500',
 ];
 
-// Extend global window to allow window.require for Electron
 declare global {
   interface Window {
-    require: any;
+    electronAPI?: {
+      openIsolatedBrowser: (data: { url: string; partitionId: string; title: string }) => void;
+      getPlatform: () => string;
+    };
   }
 }

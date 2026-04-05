@@ -1,251 +1,106 @@
 # GPT Switcher
 
-A native macOS desktop application for managing and switching between multiple ChatGPT accounts efficiently. Each account runs in its own isolated environment with persistent sessions, allowing seamless switching without the hassle of logging in and out.
+App de escritorio nativa para macOS que permite gestionar y alternar entre multiples cuentas de ChatGPT. Cada cuenta se ejecuta en un entorno aislado con sesiones persistentes, eliminando la necesidad de iniciar y cerrar sesion constantemente.
 
 ## Disclaimer
 
 **This software is provided "as is", without warranty of any kind. Use it at your own risk. The authors and contributors shall not be held liable for any claim, damages, or other liability arising from the use of this application, including issues related to macOS, Node.js, Electron, or account/session handling.**
 
-## Features
+## Funcionalidades
 
-- **Multiple Account Management**: Add and manage multiple ChatGPT accounts with custom names, emails, and color-coded avatars
-- **Isolated Sessions**: Each account runs in a completely isolated persistent partition with separate cookies and login sessions
-- **One-Click Workspace Launch**: Launch ChatGPT workspaces instantly without re-authenticating
-- **Persistent Storage**: Account data and sessions are automatically saved between app restarts
-- **Native macOS Experience**: Clean, modern interface with macOS-style title bar and design
-- **Session Notes**: Add custom notes and instructions for each account to remember usage guidelines or preferences
-- **Window Management**: Multiple workspace windows can be open simultaneously, managed through the macOS Window menu
+- **Gestion de multiples cuentas**: agrega y gestiona varias cuentas de ChatGPT con nombres, emails y avatares con color
+- **Sesiones aisladas**: cada cuenta se ejecuta en una particion persistente con cookies y sesiones independientes
+- **Lanzamiento en un clic**: abre workspaces de ChatGPT sin necesidad de re-autenticarte
+- **Persistencia**: datos de cuenta y sesiones se guardan automaticamente entre reinicios
+- **Interfaz nativa macOS**: barra de titulo con traffic lights nativos (`hiddenInset`) y diseno limpio
+- **Notas de sesion**: campo de texto libre para apuntes por cuenta
+- **Gestion de ventanas**: multiples workspaces abiertos simultaneamente, accesibles desde el menu Window
+- **Atajos de teclado**: `Cmd+1-9` para cambiar de cuenta, `Cmd+N` para agregar
+- **Seguridad**: comunicacion IPC via `preload.js` con `contextBridge` (sin `nodeIntegration`)
 
-## Technology Stack
+## Stack
 
-- **Frontend**: React 18 with TypeScript
-- **Desktop Framework**: Electron
-- **Build Tool**: Vite
-- **UI Icons**: Lucide React
-- **Styling**: Tailwind CSS (utility classes)
+- **Electron** — app de escritorio con aislamiento via particiones
+- **React 18** + **TypeScript** — UI
+- **Vite** — bundler y dev server
+- **Tailwind CSS** (CDN) — estilos
+- **Lucide React** — iconos
 
-## Installation
+## Instalacion
 
-### Prerequisites
-
-- Node.js (v16 or higher)
-- npm or yarn
-
-### Setup
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd gpt-switcher-mac
-```
-
-2. Install dependencies:
 ```bash
 npm install
 ```
 
-## Development
+## Uso
 
-Run the app in development mode:
+### Desarrollo (con hot-reload)
 
 ```bash
 npm run dev
 ```
 
-This starts the Vite dev server on `http://localhost:5173` and launches the Electron window.
+Lanza Vite en `http://localhost:5173` y Electron se conecta automaticamente.
 
-## Building
-
-### Create a production build:
+### Produccion (build + ejecutar)
 
 ```bash
 npm run build
 ```
 
-### Build distributable:
+### Empaquetar
 
 ```bash
 npm run dist
 ```
 
-This creates a `.dmg` installer for macOS in the `dist` folder.
+Genera un `.dmg` para macOS en `dist-electron/`. Para mas detalles sobre arquitecturas, firma e iconos, ver [BUILDING.md](BUILDING.md).
 
-## Usage
-
-### Adding an Account
-
-1. Click the "+" button in the sidebar
-2. Enter the account name (e.g., "Work Account", "Personal")
-3. Enter the associated email address
-4. Choose an avatar color
-5. Optionally add notes about the account usage
-6. Click "Add Account"
-
-### Launching a Workspace
-
-1. Select an account from the sidebar
-2. Click the "Launch Workspace" button
-3. A new isolated browser window opens with ChatGPT
-4. Log in with your credentials (only needed first time)
-5. The session persists across app restarts
-
-### Managing Accounts
-
-- **Switch Accounts**: Click on any account in the sidebar
-- **Delete Account**: Click the trash icon next to an account
-- **Edit Notes**: Update session notes in the account detail view
-- **View History**: See when each account was last used
-
-### Window Management
-
-Open workspace windows appear in the macOS "Window" menu as "{Account Name}". You can:
-- Have multiple workspaces open simultaneously
-- Switch between workspaces using the Window menu
-- Each workspace maintains its own isolated session
-
-## Architecture
-
-### Project Structure
+## Estructura del proyecto
 
 ```
-.
-├── App.tsx                      # Main application component
+gptswitcher/
+├── main.js                  # Proceso principal de Electron
+├── preload.js               # Bridge seguro de IPC (contextBridge)
+├── App.tsx                  # Componente raiz de React
+├── types.ts                 # Interfaces y tipos TypeScript
+├── index.html               # Entry point
+├── index.tsx                # Mount de React
 ├── components/
-│   ├── AccountDetail.tsx        # Account details and launch interface
-│   ├── AddAccountForm.tsx       # Form for adding new accounts
-│   ├── MacTitleBar.tsx          # Native macOS-style title bar
-│   └── Sidebar.tsx              # Account list sidebar
-├── services/
-│   └── storageService.ts        # LocalStorage persistence layer
-├── types.ts                     # TypeScript type definitions
-├── main.js                      # Electron main process
-├── index.tsx                    # React entry point
-└── index.html                   # HTML template
+│   ├── MacTitleBar.tsx      # Barra de titulo (espacio para traffic lights nativos)
+│   ├── Sidebar.tsx          # Lista de cuentas con scroll
+│   ├── AccountDetail.tsx    # Detalle de cuenta + boton "Launch Workspace"
+│   └── AddAccountForm.tsx   # Formulario de alta
+└── services/
+    └── storageService.ts    # Persistencia en localStorage
 ```
 
-### Key Components
+## Como funciona el aislamiento
 
-**App.tsx**
-- Central state management for accounts
-- View state coordination (list, add, edit)
-- Account CRUD operations
-- Persistence orchestration
+Cada cuenta recibe un UUID unico al crearse. Cuando se abre, Electron crea una ventana con:
 
-**AccountDetail.tsx**
-- Display account information
-- Launch isolated workspace via IPC
-- Session notes editor
-- Last used tracking
-
-**Sidebar.tsx**
-- Account list with search/filter
-- Quick account switching
-- Add/delete account actions
-
-**main.js** (Electron Main Process)
-- Window creation and management
-- IPC handlers for workspace launching
-- Menu bar setup (App, Edit, Window menus)
-- Partition-based session isolation
-
-### Session Isolation
-
-Each account uses Electron's `partition` feature to create completely isolated browser sessions:
-
-```javascript
-partition: `persist:${accountId}`
-```
-
-This ensures:
-- Separate cookies
-- Independent local storage
-- Isolated cache
-- No cross-contamination between accounts
-
-### Data Persistence
-
-Account data is stored in browser `localStorage`:
-- Account metadata (name, email, avatar color)
-- Last used timestamps
-- Custom notes
-- Active state
-
-Session data (cookies, login state) is stored in Electron's partition storage.
-
-## Configuration
-
-### Build Configuration
-
-The `package.json` includes electron-builder configuration:
-
-```json
-{
-  "build": {
-    "appId": "com.gptswitcher.app",
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": "dmg",
-      "icon": "icon.icns"
-    }
-  }
+```js
+webPreferences: {
+  partition: `persist:${account.id}`
 }
 ```
 
-### Customization
+Esto garantiza que cada cuenta tenga cookies, localStorage, IndexedDB y cache completamente independientes. Puedes tener varias cuentas de ChatGPT abiertas simultaneamente, cada una con su propio login.
 
-- **Avatar Colors**: Edit `AVATAR_COLORS` array in `types.ts`
-- **Default URL**: Modify the ChatGPT URL in `AccountDetail.tsx:55`
-- **Window Dimensions**: Adjust in `main.js:57-58` (main) and `main.js:103-104` (workspace)
+## Seguridad
 
-## Security Considerations
+- **Context isolation**: la ventana principal usa `contextIsolation: true` y `nodeIntegration: false`
+- **Preload bridge**: solo se exponen funciones especificas via `contextBridge` (`openIsolatedBrowser`, `getPlatform`)
+- **Enlaces externos**: se abren automaticamente en el navegador del sistema
+- **DevTools**: solo disponibles en modo desarrollo
+- **Ventanas hijas**: usan `nodeIntegration: false` y `contextIsolation: true` por defecto
 
-- **Node Integration**: Currently enabled for IPC communication. Consider using `contextBridge` for production
-- **External Links**: Automatically open in system browser for security
-- **Session Isolation**: Each account runs in isolated partition preventing cross-account data leakage
+## Apoyar el proyecto
 
-## Known Limitations
+Si GPT Switcher te resulta util, puedes apoyar su desarrollo:
 
-- macOS only (electron-builder configured for macOS target)
-- No built-in account import/export
-- No cloud sync between devices
-- Workspace windows title locked to account name (prevents ChatGPT from changing it)
+[![PayPal](https://img.shields.io/badge/PayPal-Donar-blue?style=flat&logo=paypal)](https://paypal.me/ernestortiz)
 
-## Future Enhancements
+## Licencia
 
-Potential improvements:
-- Cross-platform support (Windows, Linux)
-- Account import/export functionality
-- Keyboard shortcuts for quick account switching
-- Custom workspace URLs per account
-- Usage analytics and session time tracking
-- Account grouping and tagging
-
-## License (MIT)
-
-```
-MIT License
-
-Copyright (c) 2025 GPT Switcher contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-```
-
-## Contributing
-
-Contributions are welcome! Please submit a pull request or open an issue if you'd like to propose changes.
-
-For issues, feature requests, or questions, please open an issue on GitHub.
-
-
-## Support the Project
-
-This is an open source project that I maintain in my free time.  
-If you find it useful and want to support its future development, or if you want to support me in general ;), you can make a donation here:
-
-  👉 https://donate.stripe.com/6oU14m0Cc3Wabu0cee3cc00
-
-Thanks in advance!
+MIT

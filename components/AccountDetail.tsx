@@ -31,11 +31,9 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, onUpdate 
 
   // Electron IPC helper
   const sendIpc = (channel: string, data?: any) => {
-    if (window.require) {
-      const { ipcRenderer } = window.require('electron');
-      ipcRenderer.send(channel, data);
+    if (window.electronAPI) {
+      window.electronAPI.openIsolatedBrowser(data);
     } else {
-      console.warn("Electron IPC not available (Browser Mode)");
       // Fallback for web preview
       if (channel === 'open-isolated-browser') window.open(data.url, '_blank');
     }

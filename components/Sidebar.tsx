@@ -18,8 +18,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onDeleteAccount
 }) => {
   return (
-    <div className="w-64 bg-gray-50/80 dark:bg-gray-900/80 border-r border-gray-200 dark:border-gray-800 flex flex-col backdrop-blur-xl h-full">
-      <div className="p-4">
+    <div className="w-64 bg-gray-50/80 dark:bg-gray-900/80 border-r border-gray-200 dark:border-gray-800 flex flex-col backdrop-blur-xl h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-4">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 px-2">
           Your Accounts
         </h2>
