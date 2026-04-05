@@ -1,12 +1,12 @@
 # Empaquetado y distribucion
 
-Guia para generar los instalables de GPT Switcher para macOS.
+Guia para generar los instalables de GPT Switcher para macOS y Windows.
 
 ## Requisitos previos
 
 - Node.js 18+
 - npm 9+
-- macOS (compilacion nativa)
+- macOS o Windows (para compilacion nativa; cross-compilation parcial desde macOS)
 
 ## Arquitecturas
 
@@ -28,13 +28,25 @@ uname -m
 
 ## Comandos de empaquetado
 
-### Empaquetado por defecto (ambas arquitecturas)
+### macOS
 
 ```bash
-npm run dist
+npm run dist          # Ambas arquitecturas (arm64 + x64)
+npm run dist:arm64    # Solo Apple Silicon (M1/M2/M3/M4)
+npm run dist:x64      # Solo Intel
+npm run dist:universal # Binario universal
 ```
 
-Genera un `.dmg` para cada arquitectura (arm64 + x64).
+Cada comando genera tanto `.dmg` como `.zip` para la arquitectura seleccionada.
+
+### Windows
+
+```bash
+npm run dist:win       # Windows x64
+npm run dist:win-arm64 # Windows ARM
+```
+
+Genera un instalador `.exe` (NSIS).
 
 ## Salida
 
@@ -42,15 +54,17 @@ Los artefactos se generan en `dist-electron/`:
 
 ```
 dist-electron/
-├── GPT Switcher-1.0.0-arm64.dmg   # DMG para Apple Silicon
-├── GPT Switcher-1.0.0.dmg         # DMG para Intel
+├── GPT Switcher-0.2.0-arm64.dmg   # DMG para Apple Silicon
+├── GPT Switcher-0.2.0-arm64.zip   # ZIP para Apple Silicon
+├── GPT Switcher-0.2.0.dmg         # DMG para Intel
+├── GPT Switcher-0.2.0.zip         # ZIP para Intel
 ├── mac-arm64/
 │   └── GPT Switcher.app           # App directa para ARM
 └── mac/
     └── GPT Switcher.app           # App directa para Intel
 ```
 
-Puedes ejecutar el `.app` directamente sin necesidad de instalar el `.dmg`. El DMG es solo un contenedor para distribucion.
+El `.zip` contiene el `.app` listo para usar — el usuario lo descomprime y lo ejecuta (o lo arrastra a `/Applications`). El `.dmg` es la alternativa clasica con la ventana de "arrastra aqui". Para releases en GitHub, el `.zip` es lo mas practico.
 
 ## Configuracion del empaquetado
 
@@ -189,10 +203,73 @@ Esto elimina los atributos de cuarentena que macOS agrega a archivos descargados
 
 | Formato | Tamano aprox. |
 |---|---|
-| `.app` (arm64) | ~250 MB |
-| `.dmg` (arm64, compression: maximum) | ~90 MB |
+| `.dmg` (arm64) | ~96 MB |
+| `.zip` (arm64) | ~101 MB |
+| `.dmg` (x64) | ~101 MB |
+| `.zip` (x64) | ~107 MB |
 
 Los tamanos son aproximados y dependen de la version de Electron.
+
+---
+
+## Distribucion para Windows
+
+### Icono para Windows
+
+Windows usa formato `.ico` (256x256 px minimo, idealmente multi-resolucion).
+
+**Desde un PNG:**
+
+```bash
+# Opcion 1: Usando ImageMagick (brew install imagemagick)
+convert icon-1024.png -define icon:auto-resize=256,128,64,48,32,16 icons.ico
+
+# Opcion 2: Herramientas online
+# https://convertio.co/png-ico/
+# https://icoconvert.com/
+```
+
+Coloca `icons.ico` en la raiz del proyecto. Ya esta configurado en `package.json`.
+
+### Configuracion del instalador (NSIS)
+
+```json
+{
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
+  }
+}
+```
+
+- `"oneClick": false` — Muestra un wizard de instalacion (el usuario puede elegir directorio).
+- `"allowToChangeInstallationDirectory": true` — Permite al usuario elegir donde instalar.
+
+### Cross-compilation desde macOS
+
+electron-builder puede generar `.exe` desde macOS:
+
+```bash
+npm run dist:win
+```
+
+Limitaciones:
+- **Firma de codigo**: requiere Windows + certificado EV. Sin firma, SmartScreen mostrara un aviso al instalar.
+- **Pruebas**: el `.exe` generado deberia probarse en una maquina Windows real o VM.
+
+### Suprimir aviso de SmartScreen
+
+Sin firma, al abrir el `.exe` Windows mostrara "Windows protegió su equipo". El usuario debe hacer clic en "Mas informacion" → "Ejecutar de todas formas".
+
+### Diferencias de la app en Windows
+
+| Aspecto | macOS | Windows |
+|---|---|---|
+| Barra de titulo | `hiddenInset` (traffic lights nativos) | `frame: false` (botones custom: minimizar, maximizar, cerrar) |
+| Icono | `.icns` | `.ico` |
+| Atajos | `Cmd+1-9`, `Cmd+N` | `Ctrl+1-9`, `Ctrl+N` |
+| User agent | macOS Chrome | Windows Chrome |
+| Instalador | `.dmg` / `.zip` | `.exe` (NSIS) |
 
 ## Archivos incluidos en el build
 

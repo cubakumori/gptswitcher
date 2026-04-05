@@ -1,13 +1,18 @@
 {
-  "name": "gpt-switcher-mac",
+  "name": "gpt-switcher",
   "productName": "GPT Switcher",
-  "version": "1.0.0",
+  "version": "0.3.0",
   "description": "Desktop manager for ChatGPT accounts",
   "main": "main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "dist": "vite build && electron-builder"
+    "dist": "vite build && electron-builder",
+    "dist:arm64": "vite build && electron-builder --mac --arm64",
+    "dist:x64": "vite build && electron-builder --mac --x64",
+    "dist:universal": "vite build && electron-builder --mac --universal",
+    "dist:win": "vite build && electron-builder --win --x64",
+    "dist:win-arm64": "vite build && electron-builder --win --arm64"
   },
   "dependencies": {
     "lucide-react": "^0.300.0",
@@ -17,7 +22,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "electron": "^39.2.4",
-    "electron-builder": "^24.13.0",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.4.0",
     "vite": "^7.2.6"
   },
@@ -25,11 +30,31 @@
     "appId": "com.gptswitcher.app",
     "mac": {
       "category": "public.app-category.productivity",
-      "target": {
-        "target": "dmg",
-        "arch": ["arm64", "x64"]
-      },
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
       "icon": "icon.icns"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icons.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     },
     "compression": "maximum",
     "asar": true,

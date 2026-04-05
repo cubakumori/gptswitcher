@@ -1,6 +1,6 @@
 # GPT Switcher
 
-App de escritorio nativa para macOS que permite gestionar y alternar entre multiples cuentas de ChatGPT. Cada cuenta se ejecuta en un entorno aislado con sesiones persistentes, eliminando la necesidad de iniciar y cerrar sesion constantemente.
+App de escritorio multiplataforma (macOS y Windows) para gestionar y alternar entre multiples cuentas de ChatGPT. Cada cuenta se ejecuta en un entorno aislado con sesiones persistentes, eliminando la necesidad de iniciar y cerrar sesion constantemente.
 
 ## Disclaimer
 
@@ -12,10 +12,10 @@ App de escritorio nativa para macOS que permite gestionar y alternar entre multi
 - **Sesiones aisladas**: cada cuenta se ejecuta en una particion persistente con cookies y sesiones independientes
 - **Lanzamiento en un clic**: abre workspaces de ChatGPT sin necesidad de re-autenticarte
 - **Persistencia**: datos de cuenta y sesiones se guardan automaticamente entre reinicios
-- **Interfaz nativa macOS**: barra de titulo con traffic lights nativos (`hiddenInset`) y diseno limpio
+- **Multiplataforma**: macOS (traffic lights nativos) y Windows (barra de titulo custom con botones minimizar/maximizar/cerrar)
 - **Notas de sesion**: campo de texto libre para apuntes por cuenta
 - **Gestion de ventanas**: multiples workspaces abiertos simultaneamente, accesibles desde el menu Window
-- **Atajos de teclado**: `Cmd+1-9` para cambiar de cuenta, `Cmd+N` para agregar
+- **Atajos de teclado**: `Cmd/Ctrl+1-9` para cambiar de cuenta, `Cmd/Ctrl+N` para agregar
 - **Seguridad**: comunicacion IPC via `preload.js` con `contextBridge` (sin `nodeIntegration`)
 
 ## Stack
@@ -51,10 +51,15 @@ npm run build
 ### Empaquetar
 
 ```bash
-npm run dist
+npm run dist          # macOS ambas arquitecturas (arm64 + x64)
+npm run dist:arm64    # macOS solo Apple Silicon (M1/M2/M3/M4)
+npm run dist:x64      # macOS solo Intel
+npm run dist:universal # macOS binario universal
+npm run dist:win       # Windows x64
+npm run dist:win-arm64 # Windows ARM
 ```
 
-Genera un `.dmg` para macOS en `dist-electron/`. Para mas detalles sobre arquitecturas, firma e iconos, ver [BUILDING.md](BUILDING.md).
+Genera `.dmg`, `.zip` y/o `.exe` en `dist-electron/`. Para mas detalles sobre arquitecturas, firma e iconos, ver [BUILDING.md](BUILDING.md).
 
 ## Estructura del proyecto
 
@@ -67,7 +72,7 @@ gptswitcher/
 ├── index.html               # Entry point
 ├── index.tsx                # Mount de React
 ├── components/
-│   ├── MacTitleBar.tsx      # Barra de titulo (espacio para traffic lights nativos)
+│   ├── TitleBar.tsx         # Barra de titulo multiplataforma (macOS/Windows)
 │   ├── Sidebar.tsx          # Lista de cuentas con scroll
 │   ├── AccountDetail.tsx    # Detalle de cuenta + boton "Launch Workspace"
 │   └── AddAccountForm.tsx   # Formulario de alta
@@ -90,7 +95,7 @@ Esto garantiza que cada cuenta tenga cookies, localStorage, IndexedDB y cache co
 ## Seguridad
 
 - **Context isolation**: la ventana principal usa `contextIsolation: true` y `nodeIntegration: false`
-- **Preload bridge**: solo se exponen funciones especificas via `contextBridge` (`openIsolatedBrowser`, `getPlatform`)
+- **Preload bridge**: solo se exponen funciones especificas via `contextBridge` (`openIsolatedBrowser`, `getPlatform`, window controls)
 - **Enlaces externos**: se abren automaticamente en el navegador del sistema
 - **DevTools**: solo disponibles en modo desarrollo
 - **Ventanas hijas**: usan `nodeIntegration: false` y `contextIsolation: true` por defecto

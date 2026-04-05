@@ -1,17 +1,30 @@
 const { app, BrowserWindow, shell, ipcMain, Menu } = require('electron');
 const path = require('path');
 
+const isMac = process.platform === 'darwin';
+const isWin = process.platform === 'win32';
+
+// User agent de Chrome real para compatibilidad con servicios web
+const chromeVersion = process.versions.chrome;
+const osString = isMac
+  ? 'Macintosh; Intel Mac OS X 10_15_7'
+  : 'Windows NT 10.0; Win64; x64';
+const CHROME_USER_AGENT = `Mozilla/5.0 (${osString}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+
 // Mantiene un registro de las ventanas de chat abiertas: Map<partitionId, BrowserWindow>
 const openWindows = new Map();
 
 let mainWindow;
 
-function createMenu() {
-  const isMac = process.platform === 'darwin';
+function getIconPath() {
+  if (isMac) return path.join(__dirname, 'icon.icns');
+  if (isWin) return path.join(__dirname, 'icons.ico');
+  return path.join(__dirname, 'icons.png');
+}
 
+function createMenu() {
   const template = [
-    // 1. App Menu (GPT Switcher)
-    {
+    ...(isMac ? [{
       label: app.name,
       submenu: [
         { role: 'about' },
@@ -22,8 +35,7 @@ function createMenu() {
         { type: 'separator' },
         { role: 'quit' }
       ]
-    },
-    // 2. Edit Menu (Necesario para Copiar/Pegar dentro de los chats)
+    }] : []),
     {
       label: 'Edit',
       submenu: [
@@ -36,14 +48,13 @@ function createMenu() {
         { role: 'selectAll' }
       ]
     },
-    // 3. Window Menu (Solo gestión de ventanas)
     {
       label: 'Window',
       submenu: [
         { role: 'minimize' },
-        { role: 'zoom' },
-        { type: 'separator' },
-        { role: 'front' } // Esto lista las ventanas abiertas automáticamente al final
+        ...(isMac
+          ? [{ role: 'zoom' }, { type: 'separator' }, { role: 'front' }]
+          : [{ role: 'close' }])
       ]
     }
   ];
@@ -56,7 +67,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 750,
-    titleBarStyle: 'hiddenInset',
+    ...(isMac ? { titleBarStyle: 'hiddenInset' } : { frame: false }),
+    icon: getIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -74,7 +86,7 @@ function createWindow() {
   });
 
   const isDev = !app.isPackaged;
-  
+
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173').catch(() => {
         mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
@@ -87,55 +99,61 @@ function createWindow() {
 // --- IPC HANDLERS ---
 
 ipcMain.on('open-isolated-browser', (event, { url, partitionId, title }) => {
-  // 1. Comprobar si ya existe una ventana para esta cuenta
   if (openWindows.has(partitionId)) {
     const existingWin = openWindows.get(partitionId);
     if (!existingWin.isDestroyed()) {
       existingWin.show();
       existingWin.focus();
-      return; // No abrimos una nueva
+      return;
     }
-    // Si estaba destruida (cerrada forzosamente), la borramos del mapa y creamos otra
     openWindows.delete(partitionId);
   }
 
-  // 2. Crear nueva ventana si no existe
   const childWin = new BrowserWindow({
     width: 1200,
     height: 900,
     title: title || 'Workspace',
+    icon: getIconPath(),
     webPreferences: {
-      partition: `persist:${partitionId}`, // Cookies aisladas
+      partition: `persist:${partitionId}`,
       nodeIntegration: false,
       contextIsolation: true
     }
   });
-  
-  // Guardar referencia
+
   openWindows.set(partitionId, childWin);
 
+  childWin.webContents.setUserAgent(CHROME_USER_AGENT);
   childWin.loadURL(url);
 
-  // Evitar que ChatGPT renombre la ventana
   childWin.on('page-title-updated', (e) => {
     e.preventDefault();
   });
 
-  // Limpiar referencia al cerrar
   childWin.on('closed', () => {
     openWindows.delete(partitionId);
   });
 });
 
+// Window controls for frameless windows (Windows/Linux)
+ipcMain.on('window-minimize', () => mainWindow?.minimize());
+ipcMain.on('window-maximize', () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+ipcMain.on('window-close', () => mainWindow?.close());
+
 app.on('ready', () => {
-  // Establecer nombre de la App para el menú (solo efectivo en desarrollo, en prod usa Info.plist)
   app.setName('GPT Switcher');
   createMenu();
   createWindow();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (!isMac) app.quit();
 });
 
 app.on('activate', () => {

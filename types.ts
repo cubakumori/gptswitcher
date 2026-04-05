@@ -29,6 +29,9 @@ declare global {
   interface Window {
     electronAPI?: {
       openIsolatedBrowser: (data: { url: string; partitionId: string; title: string }) => void;
+      minimizeWindow: () => void;
+      maximizeWindow: () => void;
+      closeWindow: () => void;
       getPlatform: () => string;
     };
   }

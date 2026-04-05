@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MacTitleBar } from './components/MacTitleBar';
+import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { AccountDetail } from './components/AccountDetail';
 import { AddAccountForm } from './components/AddAccountForm';
@@ -10,6 +10,7 @@ const App: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>(ViewState.LIST);
+  const [platform, setPlatform] = useState('darwin');
 
   // Initialize from storage
   useEffect(() => {
@@ -20,6 +21,10 @@ const App: React.FC = () => {
     if (stored.length > 0) {
       const mostRecent = [...stored].sort((a, b) => b.lastUsed - a.lastUsed)[0];
       setActiveAccountId(mostRecent.id);
+    }
+
+    if (window.electronAPI?.getPlatform) {
+      setPlatform(window.electronAPI.getPlatform());
     }
   }, []);
 
@@ -119,7 +124,7 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-white dark:bg-gray-900 flex flex-col overflow-hidden text-gray-900 dark:text-gray-100">
       
-      <MacTitleBar />
+      <TitleBar platform={platform} />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar 
