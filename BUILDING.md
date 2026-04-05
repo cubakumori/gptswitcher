@@ -54,10 +54,10 @@ Los artefactos se generan en `dist-electron/`:
 
 ```
 dist-electron/
-├── GPT Switcher-0.2.0-arm64.dmg   # DMG para Apple Silicon
-├── GPT Switcher-0.2.0-arm64.zip   # ZIP para Apple Silicon
-├── GPT Switcher-0.2.0.dmg         # DMG para Intel
-├── GPT Switcher-0.2.0.zip         # ZIP para Intel
+├── GPT Switcher-0.3.0-arm64.dmg   # DMG para Apple Silicon
+├── GPT Switcher-0.3.0-arm64.zip   # ZIP para Apple Silicon
+├── GPT Switcher-0.3.0.dmg         # DMG para Intel
+├── GPT Switcher-0.3.0.zip         # ZIP para Intel
 ├── mac-arm64/
 │   └── GPT Switcher.app           # App directa para ARM
 └── mac/
