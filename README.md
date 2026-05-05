@@ -102,9 +102,12 @@ Esto garantiza que cada cuenta tenga cookies, localStorage, IndexedDB y cache co
 
 ## Apoyar el proyecto
 
-Si GPT Switcher te resulta util, puedes apoyar su desarrollo:
+Si **GPT Switcher** te ha resultado de alguna utilidad, considera invitarme a un café:
 
-[![PayPal](https://img.shields.io/badge/PayPal-Donar-blue?style=flat&logo=paypal)](https://paypal.me/ernestortiz)
+[![PayPal](https://img.shields.io/badge/PayPal-Donar-blue?style=for-the-badge&logo=paypal)](https://paypal.me/ernestortiz)
+
+[![Ko-fi](https://img.shields.io/badge/BUY_ME_A-KO_FI-darkseagreen?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/kumoricuba)
+
 
 ## Licencia
 
