@@ -1,6 +1,6 @@
 # GPT Switcher
 
-App de escritorio multiplataforma (macOS y Windows) para gestionar y alternar entre multiples cuentas de ChatGPT. Cada cuenta se ejecuta en un entorno aislado con sesiones persistentes, eliminando la necesidad de iniciar y cerrar sesion constantemente.
+App de escritorio multiplataforma (macOS y Windows) para gestionar y alternar entre multiples cuentas de ChatGPT y Codex. Cada cuenta se ejecuta en un entorno aislado con sesiones persistentes, eliminando la necesidad de iniciar y cerrar sesion constantemente.
 
 ## Disclaimer
 
@@ -10,11 +10,13 @@ App de escritorio multiplataforma (macOS y Windows) para gestionar y alternar en
 
 - **Gestion de multiples cuentas**: agrega y gestiona varias cuentas de ChatGPT con nombres, emails y avatares con color
 - **Sesiones aisladas**: cada cuenta se ejecuta en una particion persistente con cookies y sesiones independientes
-- **Lanzamiento en un clic**: abre workspaces de ChatGPT sin necesidad de re-autenticarte
+- **Lanzamiento en un clic**: abre ChatGPT o Codex (`chatgpt.com/codex`) por cuenta sin necesidad de re-autenticarte; ambos comparten la misma sesion aislada
+- **Borrado limpio**: eliminar una cuenta cierra sus ventanas y borra cookies, storage y cache de su particion
 - **Persistencia**: datos de cuenta y sesiones se guardan automaticamente entre reinicios
 - **Multiplataforma**: macOS (traffic lights nativos) y Windows (barra de titulo custom con botones minimizar/maximizar/cerrar)
 - **Notas de sesion**: campo de texto libre para apuntes por cuenta
-- **Gestion de ventanas**: multiples workspaces abiertos simultaneamente, accesibles desde el menu Window
+- **Gestion de ventanas**: multiples workspaces abiertos simultaneamente, con indicador de cuales estan abiertos; en macOS tambien accesibles desde el menu Window
+- **Enlaces externos**: los popups de login (Google, Apple, GitHub para Codex) se quedan dentro de la app; cualquier otro enlace se abre en el navegador del sistema
 - **Atajos de teclado**: `Cmd/Ctrl+1-9` para cambiar de cuenta, `Cmd/Ctrl+N` para agregar
 - **Seguridad**: comunicacion IPC via `preload.js` con `contextBridge` (sin `nodeIntegration`)
 
@@ -74,7 +76,7 @@ gptswitcher/
 ├── components/
 │   ├── TitleBar.tsx         # Barra de titulo multiplataforma (macOS/Windows)
 │   ├── Sidebar.tsx          # Lista de cuentas con scroll
-│   ├── AccountDetail.tsx    # Detalle de cuenta + boton "Launch Workspace"
+│   ├── AccountDetail.tsx    # Detalle de cuenta + botones "Launch ChatGPT" / "Launch Codex"
 │   └── AddAccountForm.tsx   # Formulario de alta
 └── services/
     └── storageService.ts    # Persistencia en localStorage

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Account } from '../types';
-import { ExternalLink, ShieldCheck, Clock, Activity, Loader2, Command } from 'lucide-react';
+import { Account, WorkspaceTarget } from '../types';
+import { ExternalLink, ShieldCheck, Clock, Activity, Loader2, Command, Terminal, MessageSquare } from 'lucide-react';
 
 interface AccountDetailProps {
   account: Account;
+  platform: string;
+  openTargets: WorkspaceTarget[];
   onUpdate: (id: string, updates: Partial<Account>) => void;
 }
 
@@ -24,38 +26,39 @@ const getColorStyles = (colorClass: string) => {
   return mapping[colorClass] || mapping['bg-blue-500'];
 };
 
-export const AccountDetail: React.FC<AccountDetailProps> = ({ account, onUpdate }) => {
-  const [isLaunchingWeb, setIsLaunchingWeb] = useState(false);
+const TARGET_URLS: Record<WorkspaceTarget, string> = {
+  chatgpt: 'https://chatgpt.com',
+  codex: 'https://chatgpt.com/codex',
+};
+
+export const AccountDetail: React.FC<AccountDetailProps> = ({ account, platform, openTargets, onUpdate }) => {
+  const [launching, setLaunching] = useState<WorkspaceTarget | null>(null);
   const [isEdited, setIsEdited] = useState(false);
   const [notes, setNotes] = useState(account.notes || '');
 
-  // Electron IPC helper
-  const sendIpc = (channel: string, data?: any) => {
-    if (window.electronAPI) {
-      window.electronAPI.openIsolatedBrowser(data);
-    } else {
-      // Fallback for web preview
-      if (channel === 'open-isolated-browser') window.open(data.url, '_blank');
-    }
-  };
+  const isMac = platform === 'darwin';
 
   useEffect(() => {
     setNotes(account.notes || '');
     setIsEdited(false);
   }, [account.id]);
 
-  const handleLaunchWeb = () => {
-    setIsLaunchingWeb(true);
+  const handleLaunch = (target: WorkspaceTarget) => {
+    setLaunching(target);
     onUpdate(account.id, { lastUsed: Date.now() });
-    
-    // Call the isolated browser handler
-    sendIpc('open-isolated-browser', { 
-      url: 'https://chatgpt.com', 
-      partitionId: account.id, // This ID creates the unique cookie jar
-      title: account.name // Pass the account name as the window title
-    });
 
-    setTimeout(() => setIsLaunchingWeb(false), 1000);
+    if (window.electronAPI) {
+      window.electronAPI.openIsolatedBrowser({
+        partitionId: account.id, // This ID selects the account's isolated cookie jar
+        target,
+        title: account.name,
+      });
+    } else {
+      // Fallback for web preview outside Electron
+      window.open(TARGET_URLS[target], '_blank');
+    }
+
+    setTimeout(() => setLaunching(null), 800);
   };
 
   const handleSaveNotes = () => {
@@ -65,6 +68,8 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, onUpdate 
 
   const lastUsedDate = new Date(account.lastUsed);
   const buttonStyle = getColorStyles(account.avatarColor);
+  const chatOpen = openTargets.includes('chatgpt');
+  const codexOpen = openTargets.includes('codex');
   
   return (
     <div className="flex-1 bg-white dark:bg-gray-900 flex flex-col h-full overflow-hidden">
@@ -92,29 +97,58 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, onUpdate 
             </div>
           </div>
 
-          {/* Right Column: Action (Approx 1/3) */}
-          <div className="w-1/3 min-w-[260px] shrink-0 flex flex-col items-center">
+          {/* Right Column: Actions (Approx 1/3) */}
+          <div className="w-1/3 min-w-[260px] shrink-0 flex flex-col items-stretch space-y-2">
             <button
-                onClick={handleLaunchWeb}
-                disabled={isLaunchingWeb}
+                onClick={() => handleLaunch('chatgpt')}
+                disabled={launching !== null}
                 className={`
-                w-full flex items-center justify-center space-x-3 px-6 py-4 rounded-xl font-bold shadow-lg transition-all duration-200 text-lg text-white active:scale-[0.99]
-                ${isLaunchingWeb 
+                w-full flex items-center justify-center space-x-3 px-6 py-3 rounded-xl font-bold shadow-lg transition-all duration-200 text-base text-white active:scale-[0.99]
+                ${launching === 'chatgpt'
                     ? 'bg-gray-100 !text-gray-400 cursor-not-allowed dark:bg-gray-800 shadow-none' 
                     : buttonStyle
                 }
                 `}
             >
-                {isLaunchingWeb ? (
-                <Loader2 size={24} className="animate-spin" />
+                {launching === 'chatgpt' ? (
+                <Loader2 size={20} className="animate-spin" />
                 ) : (
-                <ExternalLink size={24} />
+                <MessageSquare size={20} />
                 )}
-                <span>Launch Workspace</span>
+                <span>{chatOpen ? 'Focus ChatGPT' : 'Launch ChatGPT'}</span>
             </button>
-            <p className="text-center text-[10px] text-gray-400 mt-2 flex items-center justify-center space-x-1 opacity-80">
-                <Command size={10} />
-                <span>Menu: Window &gt; {account.name}</span>
+
+            <button
+                onClick={() => handleLaunch('codex')}
+                disabled={launching !== null}
+                className={`
+                w-full flex items-center justify-center space-x-3 px-6 py-3 rounded-xl font-semibold border transition-all duration-200 text-base active:scale-[0.99]
+                ${launching === 'codex'
+                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-800 dark:border-gray-700'
+                    : 'bg-white hover:bg-gray-50 text-gray-800 border-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 dark:border-gray-600'
+                }
+                `}
+            >
+                {launching === 'codex' ? (
+                <Loader2 size={20} className="animate-spin" />
+                ) : (
+                <Terminal size={20} />
+                )}
+                <span>{codexOpen ? 'Focus Codex' : 'Launch Codex'}</span>
+            </button>
+
+            <p className="text-center text-[10px] text-gray-400 flex items-center justify-center space-x-1 opacity-80">
+                {isMac ? (
+                  <>
+                    <Command size={10} />
+                    <span>Menu: Window &gt; {account.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink size={10} />
+                    <span>Both open in the same isolated session</span>
+                  </>
+                )}
             </p>
           </div>
 
@@ -131,9 +165,9 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, onUpdate 
                 <div>
                     <h3 className="font-semibold text-blue-800 dark:text-blue-300">Isolated Environment</h3>
                     <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                        This workspace runs in a <strong>persistent partition</strong>. 
+                        ChatGPT and Codex for this account run in one <strong>persistent partition</strong>. 
                         Cookies and login sessions are completely isolated from your other accounts. 
-                        Closing the window saves the session for next time.
+                        Closing a window saves the session for next time.
                     </p>
                 </div>
             </div>
@@ -156,7 +190,7 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, onUpdate 
                         setNotes(e.target.value);
                         setIsEdited(true);
                     }}
-                    placeholder="E.g., Use GPT-4 for code generation only on this account..."
+                    placeholder="E.g., Work account: Codex is connected to the company GitHub org, keep personal repos out..."
                     className="w-full h-40 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 outline-none resize-none transition-shadow text-sm leading-relaxed"
                 />
             </div>
@@ -167,10 +201,16 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, onUpdate 
                      <div className="font-mono text-sm text-gray-800 dark:text-gray-200 truncate">{account.id}</div>
                 </div>
                  <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                     <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Isolation Type</div>
-                     <div className="text-sm text-gray-800 dark:text-gray-200 flex items-center space-x-1">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span>Persistent Partition</span>
+                     <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Open Workspaces</div>
+                     <div className="text-sm text-gray-800 dark:text-gray-200 flex items-center space-x-3">
+                        <span className="flex items-center space-x-1">
+                          <span className={`w-2 h-2 rounded-full ${chatOpen ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></span>
+                          <span>ChatGPT</span>
+                        </span>
+                        <span className="flex items-center space-x-1">
+                          <span className={`w-2 h-2 rounded-full ${codexOpen ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></span>
+                          <span>Codex</span>
+                        </span>
                      </div>
                 </div>
             </div>

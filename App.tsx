@@ -3,7 +3,7 @@ import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { AccountDetail } from './components/AccountDetail';
 import { AddAccountForm } from './components/AddAccountForm';
-import { Account, ViewState } from './types';
+import { Account, OpenWorkspace, ViewState } from './types';
 import { getStoredAccounts, saveAccounts } from './services/storageService';
 
 const App: React.FC = () => {
@@ -11,6 +11,7 @@ const App: React.FC = () => {
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>(ViewState.LIST);
   const [platform, setPlatform] = useState('darwin');
+  const [openWorkspaces, setOpenWorkspaces] = useState<OpenWorkspace[]>([]);
 
   // Initialize from storage
   useEffect(() => {
@@ -26,6 +27,14 @@ const App: React.FC = () => {
     if (window.electronAPI?.getPlatform) {
       setPlatform(window.electronAPI.getPlatform());
     }
+  }, []);
+
+  // Track which workspace windows are open (main process is the source of truth)
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onOpenWorkspacesChanged) return;
+    api.getOpenWorkspaces().then(setOpenWorkspaces).catch(() => {});
+    return api.onOpenWorkspacesChanged(setOpenWorkspaces);
   }, []);
 
   // Persistence effect
@@ -101,10 +110,19 @@ const App: React.FC = () => {
       ));
   };
 
-  const handleDeleteAccount = (id: string, e?: React.MouseEvent) => {
+  const handleDeleteAccount = async (id: string, e?: React.MouseEvent) => {
       if (e) e.stopPropagation();
-      const confirm = window.confirm("Are you sure you want to remove this account? This will clear its settings from the app.");
+      const confirm = window.confirm(
+        "Remove this account? Its open workspaces will be closed and its saved login, cookies and cache will be deleted from this computer."
+      );
       if (!confirm) return;
+
+      // Wipe the isolated partition first so no session data is left behind on disk
+      try {
+        await window.electronAPI?.clearAccountSession(id);
+      } catch (err) {
+        console.error('Failed to clear account session', err);
+      }
 
       const updated = accounts.filter(a => a.id !== id);
       setAccounts(updated);
@@ -120,6 +138,7 @@ const App: React.FC = () => {
   };
 
   const activeAccount = accounts.find(a => a.id === activeAccountId);
+  const openAccountIds = new Set(openWorkspaces.map(w => w.partitionId));
 
   return (
     <div className="h-screen w-screen bg-white dark:bg-gray-900 flex flex-col overflow-hidden text-gray-900 dark:text-gray-100">
@@ -130,6 +149,7 @@ const App: React.FC = () => {
         <Sidebar 
           accounts={accounts}
           activeAccountId={activeAccountId}
+          openAccountIds={openAccountIds}
           onSelectAccount={handleSwitchAccount}
           onAddAccount={() => setViewState(ViewState.ADD)}
           onDeleteAccount={handleDeleteAccount}
@@ -150,8 +170,9 @@ const App: React.FC = () => {
         {viewState === ViewState.LIST && activeAccount && (
           <AccountDetail 
               account={activeAccount} 
+              platform={platform}
+              openTargets={openWorkspaces.filter(w => w.partitionId === activeAccount.id).map(w => w.target)}
               onUpdate={handleUpdateAccount}
-              onDelete={(id) => handleDeleteAccount(id)}
           />
         )}
 

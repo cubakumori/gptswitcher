@@ -6,6 +6,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [0.4.0] - 2026-09-20
+
+### Codex
+
+- Nuevo boton **Launch Codex** por cuenta: abre `chatgpt.com/codex` en la misma particion aislada que ChatGPT, sin volver a iniciar sesion
+- Cada cuenta puede tener abiertas a la vez una ventana de ChatGPT y otra de Codex; los botones cambian a "Focus" cuando la ventana ya existe
+- Indicador de workspaces abiertos en el sidebar (punto verde) y en el detalle de cuenta; el proceso principal notifica al renderer via `open-workspaces-changed`
+- El renderer ya no envia URLs al proceso principal: solo la clave del destino (`chatgpt` / `codex`), que main.js resuelve
+
+### Fixed
+
+- **Borrar una cuenta ahora borra su sesion**: se cierran sus ventanas y se limpian cookies, storage y cache de la particion (`clear-account-session`). Antes solo se eliminaba el registro y el login quedaba en disco
+- **User agent en la sesion**: el UA de Chrome se fija con `session.setUserAgent` en vez de solo en el `webContents`, de modo que los popups de login (Google, Apple, GitHub) tambien lo heredan
+- **Enlaces externos en los workspaces**: las ventanas hijas tienen `setWindowOpenHandler`; solo los dominios de OpenAI y de los proveedores de login (y las rutas OAuth de GitHub) se abren dentro de la app, el resto va al navegador del sistema
+- **macOS: recuperar la ventana principal**: si se cerraba con workspaces abiertos, el clic en el Dock no la reabria. `activate` ahora comprueba si `mainWindow` sigue viva
+- **Handlers de ventana** (`window-minimize/maximize/close`) protegidos contra una ventana principal ya destruida
+- **Icono de Windows**: `main.js` y `package.json` apuntaban a `icons.ico`; el archivo es `icon.ico`. Los iconos ahora se incluyen en `build.files`
+- **CSS inexistente**: eliminado el `<link>` a `/index.css` en `index.html` (404 en dev, peticion fallida en produccion)
+- **Pista de menu en Windows**: el texto "Menu: Window > cuenta" solo se muestra en macOS, donde existe ese menu
+
+### Changed
+
+- Placeholder de notas y textos de ayuda actualizados para mencionar Codex
+- Version 0.4.0
+
 ## [0.3.0] - 2026-04-05
 
 ### Soporte multiplataforma (Windows)

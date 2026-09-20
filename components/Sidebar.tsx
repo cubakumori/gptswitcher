@@ -1,10 +1,11 @@
 import React from 'react';
 import { Account } from '../types';
-import { Plus, User, CheckCircle2, Trash2, LogOut, Command } from 'lucide-react';
+import { Plus, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface SidebarProps {
   accounts: Account[];
   activeAccountId: string | null;
+  openAccountIds: Set<string>;
   onSelectAccount: (id: string) => void;
   onAddAccount: () => void;
   onDeleteAccount: (id: string, e: React.MouseEvent) => void;
@@ -13,6 +14,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   accounts,
   activeAccountId,
+  openAccountIds,
   onSelectAccount,
   onAddAccount,
   onDeleteAccount
@@ -26,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="space-y-1">
           {accounts.map((account, index) => {
             const isActive = activeAccountId === account.id;
+            const isOpen = openAccountIds.has(account.id);
             const shortcutNumber = index + 1;
             const showShortcut = shortcutNumber <= 9;
 
@@ -40,8 +43,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }`}
               >
                 <div className="flex items-center space-x-3 overflow-hidden flex-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0 ${account.avatarColor}`}>
-                    {account.name.substring(0, 2).toUpperCase()}
+                  <div className="relative shrink-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm ${account.avatarColor}`}>
+                      {account.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    {isOpen && (
+                      <span
+                        title="Workspace open"
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-gray-50 dark:border-gray-900"
+                      />
+                    )}
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="font-medium text-sm truncate">{account.name}</span>

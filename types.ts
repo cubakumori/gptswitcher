@@ -14,6 +14,13 @@ export enum ViewState {
   EDIT = 'EDIT'
 }
 
+export type WorkspaceTarget = 'chatgpt' | 'codex';
+
+export interface OpenWorkspace {
+  partitionId: string;
+  target: WorkspaceTarget;
+}
+
 export const AVATAR_COLORS = [
   'bg-blue-500',
   'bg-green-500',
@@ -28,7 +35,10 @@ export const AVATAR_COLORS = [
 declare global {
   interface Window {
     electronAPI?: {
-      openIsolatedBrowser: (data: { url: string; partitionId: string; title: string }) => void;
+      openIsolatedBrowser: (data: { partitionId: string; target: WorkspaceTarget; title: string }) => void;
+      clearAccountSession: (partitionId: string) => Promise<boolean>;
+      getOpenWorkspaces: () => Promise<OpenWorkspace[]>;
+      onOpenWorkspacesChanged: (callback: (list: OpenWorkspace[]) => void) => () => void;
       minimizeWindow: () => void;
       maximizeWindow: () => void;
       closeWindow: () => void;
