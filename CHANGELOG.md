@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [0.6.0] - 2026-09-20
+
+### Added
+
+- **Icono en la bandeja / barra de menus**: lista las cuentas con "Launch/Focus ChatGPT" y "Launch/Focus Codex", muestra la ventana principal y permite activar o desactivar los atajos globales. Icono template monocromo en macOS (`trayTemplate.png`), `icon.ico` en Windows
+- **Atajos globales** (activados por defecto, desactivables desde la bandeja): `Cmd/Ctrl+Alt+1-9` abre o enfoca ChatGPT de la cuenta N, `Cmd/Ctrl+Alt+0` muestra GPT Switcher. Funcionan aunque la app no tenga el foco
+- **Editar cuenta**: boton lapiz junto al nombre para cambiar nombre, email y color sin perder la sesion. Reutiliza el formulario de alta en modo edicion
+- **`npm test`**: smoke test del proceso principal (`test/smoke.js`) que arranca la app con un `userData` temporal y comprueba allowlist de enlaces, saneado del store, ajustes, `CODEX_HOME`, apertura y cierre de workspaces, limpieza de sesion y persistencia de la ventana
+- Ajustes persistidos en `accounts.json` (`settings.globalShortcuts`)
+
+### Fixed
+
+- **Menu Window en macOS**: el submenu lleva `role: 'window'`, necesario para que el sistema anada la lista de ventanas abiertas. Sin el, la pista "Menu: Window > cuenta" no se cumplia
+- **Atajo en Windows**: el sidebar mostraba `⌘1` tambien en Windows; ahora muestra `Ctrl+1`
+
 ## [0.5.0] - 2026-09-20
 
 ### Codex CLI e IDE

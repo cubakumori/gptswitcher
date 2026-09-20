@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Account, CodexHomeInfo, WorkspaceTarget } from '../types';
-import { ExternalLink, ShieldCheck, Clock, Activity, Loader2, Command, Terminal, MessageSquare, SquareTerminal, Copy, Check } from 'lucide-react';
+import { ExternalLink, ShieldCheck, Clock, Activity, Loader2, Command, Terminal, MessageSquare, SquareTerminal, Copy, Check, Pencil } from 'lucide-react';
 
 interface AccountDetailProps {
   account: Account;
   platform: string;
   openTargets: WorkspaceTarget[];
   onUpdate: (id: string, updates: Partial<Account>) => void;
+  onEdit: () => void;
 }
 
 // Map the avatar color (bg-X-500) to specific button styles (bg-X-600, hover, shadow)
@@ -31,7 +32,7 @@ const TARGET_URLS: Record<WorkspaceTarget, string> = {
   codex: 'https://chatgpt.com/codex',
 };
 
-export const AccountDetail: React.FC<AccountDetailProps> = ({ account, platform, openTargets, onUpdate }) => {
+export const AccountDetail: React.FC<AccountDetailProps> = ({ account, platform, openTargets, onUpdate, onEdit }) => {
   const [launching, setLaunching] = useState<WorkspaceTarget | null>(null);
   const [isEdited, setIsEdited] = useState(false);
   const [notes, setNotes] = useState(account.notes || '');
@@ -108,9 +109,19 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, platform,
               {account.name.substring(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 truncate">
-                {account.name}
-              </h1>
+              <div className="flex items-center space-x-2 mb-1 min-w-0">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
+                  {account.name}
+                </h1>
+                <button
+                  onClick={onEdit}
+                  title="Edit name, email or color"
+                  aria-label="Edit account"
+                  className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors shrink-0"
+                >
+                  <Pencil size={14} />
+                </button>
+              </div>
               <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400 text-sm truncate">
                 <ShieldCheck size={14} className="text-green-500 shrink-0" />
                 <span className="truncate">{account.email}</span>

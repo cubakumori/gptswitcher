@@ -6,6 +6,7 @@ interface SidebarProps {
   accounts: Account[];
   activeAccountId: string | null;
   openAccountIds: Set<string>;
+  platform: string;
   onSelectAccount: (id: string) => void;
   onAddAccount: () => void;
   onDeleteAccount: (id: string, e: React.MouseEvent) => void;
@@ -15,10 +16,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   accounts,
   activeAccountId,
   openAccountIds,
+  platform,
   onSelectAccount,
   onAddAccount,
   onDeleteAccount
 }) => {
+  const modifier = platform === 'darwin' ? '⌘' : 'Ctrl+';
   return (
     <div className="w-64 bg-gray-50/80 dark:bg-gray-900/80 border-r border-gray-200 dark:border-gray-800 flex flex-col backdrop-blur-xl h-full overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4">
@@ -66,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex items-center pl-2">
                     {showShortcut && !isActive && (
                         <span className="hidden group-hover:flex items-center text-[10px] font-medium opacity-50 mr-2 border border-gray-400/30 px-1 rounded">
-                            ⌘{shortcutNumber}
+                            {modifier}{shortcutNumber}
                         </span>
                     )}
 

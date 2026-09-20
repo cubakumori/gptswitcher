@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain, Menu, session, screen, clipboard } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, Menu, Tray, nativeImage, globalShortcut, session, screen, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -79,6 +79,7 @@ function broadcastOpenWorkspaces() {
   if (isLive(mainWindow)) {
     mainWindow.webContents.send('open-workspaces-changed', listOpenWorkspaces());
   }
+  refreshTray();
 }
 
 function getIconPath() {
@@ -206,6 +207,8 @@ function createMenu() {
     },
     {
       label: 'Window',
+      // En macOS, role 'window' hace que el sistema anada la lista de ventanas abiertas al final.
+      ...(isMac ? { role: 'window' } : {}),
       submenu: [
         { role: 'minimize' },
         ...(isMac
@@ -329,6 +332,115 @@ function closeWorkspacesFor(partitionId) {
   broadcastOpenWorkspaces();
 }
 
+// --- Ventana principal: mostrar/recuperar ---
+
+function showMainWindow() {
+  if (isLive(mainWindow)) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  } else {
+    createWindow();
+  }
+}
+
+// --- Icono en la bandeja / barra de menus ---
+
+let tray = null;
+
+function trayIcon() {
+  if (isMac) {
+    const img = nativeImage.createFromPath(path.join(__dirname, 'trayTemplate.png'));
+    img.setTemplateImage(true);
+    return img;
+  }
+  if (isWin) return nativeImage.createFromPath(path.join(__dirname, 'icon.ico'));
+  return nativeImage.createFromPath(path.join(__dirname, 'tray.png'));
+}
+
+function accountLabel(account, index) {
+  const shortcut = index < 9 ? `  ${isMac ? '⌘⌥' : 'Ctrl+Alt+'}${index + 1}` : '';
+  return `${account.name}${shortcut}`;
+}
+
+function buildTrayMenu() {
+  const { accounts } = store.getState();
+  const settings = store.getSettings();
+  const open = new Set(listOpenWorkspaces().map((w) => `${w.partitionId}::${w.target}`));
+
+  const accountItems = accounts.length
+    ? accounts.map((account, index) => ({
+        label: accountLabel(account, index),
+        submenu: [
+          {
+            label: open.has(windowKey(account.id, 'chatgpt')) ? 'Focus ChatGPT' : 'Launch ChatGPT',
+            click: () => openWorkspace({ partitionId: account.id, target: 'chatgpt', title: account.name }),
+          },
+          {
+            label: open.has(windowKey(account.id, 'codex')) ? 'Focus Codex' : 'Launch Codex',
+            click: () => openWorkspace({ partitionId: account.id, target: 'codex', title: account.name }),
+          },
+        ],
+      }))
+    : [{ label: 'No accounts yet', enabled: false }];
+
+  return Menu.buildFromTemplate([
+    { label: 'Show GPT Switcher', click: showMainWindow },
+    { type: 'separator' },
+    ...accountItems,
+    { type: 'separator' },
+    {
+      label: `Global shortcuts (${isMac ? '⌘⌥1-9' : 'Ctrl+Alt+1-9'})`,
+      type: 'checkbox',
+      checked: settings.globalShortcuts,
+      click: (item) => {
+        store.setSettings({ globalShortcuts: item.checked });
+        refreshShortcuts();
+        refreshTray();
+      },
+    },
+    { type: 'separator' },
+    { role: 'quit', label: 'Quit GPT Switcher' },
+  ]);
+}
+
+function refreshTray() {
+  if (!tray) return;
+  tray.setContextMenu(buildTrayMenu());
+}
+
+function createTray() {
+  try {
+    tray = new Tray(trayIcon());
+  } catch (err) {
+    console.error('Tray icon unavailable', err);
+    return;
+  }
+  tray.setToolTip('GPT Switcher');
+  // En Windows/Linux el clic izquierdo abre la ventana; en macOS abre el menu.
+  if (!isMac) tray.on('click', showMainWindow);
+  refreshTray();
+}
+
+// --- Atajos globales: CommandOrControl+Alt+1..9 abre ChatGPT de la cuenta N, +0 muestra la app ---
+
+const SHORTCUT_MODIFIER = 'CommandOrControl+Alt';
+
+function refreshShortcuts() {
+  globalShortcut.unregisterAll();
+  if (!store.getSettings().globalShortcuts) return;
+
+  globalShortcut.register(`${SHORTCUT_MODIFIER}+0`, showMainWindow);
+  for (let n = 1; n <= 9; n++) {
+    globalShortcut.register(`${SHORTCUT_MODIFIER}+${n}`, () => {
+      const { accounts } = store.getState();
+      const account = accounts[n - 1];
+      if (!account) return;
+      openWorkspace({ partitionId: account.id, target: 'chatgpt', title: account.name });
+    });
+  }
+}
+
 // --- IPC HANDLERS ---
 
 ipcMain.on('open-isolated-browser', (event, data) => {
@@ -342,7 +454,16 @@ ipcMain.handle('get-open-workspaces', () => listOpenWorkspaces());
 ipcMain.handle('store:get', () => store.getState());
 ipcMain.handle('store:set', (event, state) => {
   if (!state || typeof state !== 'object') return store.getState();
-  return store.setState(state);
+  const result = store.setState(state);
+  refreshTray();
+  return result;
+});
+ipcMain.handle('settings:get', () => store.getSettings());
+ipcMain.handle('settings:set', (event, patch) => {
+  const result = store.setSettings(patch);
+  refreshShortcuts();
+  refreshTray();
+  return result;
 });
 
 // Codex CLI / IDE por cuenta
@@ -392,6 +513,12 @@ app.on('ready', () => {
   app.setName('GPT Switcher');
   createMenu();
   createWindow();
+  createTray();
+  refreshShortcuts();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {
@@ -400,10 +527,8 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   // Recupera la ventana principal aunque sigan abiertos workspaces.
-  if (isLive(mainWindow)) {
-    mainWindow.show();
-    mainWindow.focus();
-  } else {
-    createWindow();
-  }
+  showMainWindow();
 });
+
+// Exportado solo para las pruebas (npm test); main.js sigue siendo el entry point de Electron.
+module.exports = { shouldOpenInApp, codexShellCommand, WORKSPACE_TARGETS };

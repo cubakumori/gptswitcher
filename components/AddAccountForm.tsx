@@ -3,22 +3,26 @@ import { Account, AVATAR_COLORS } from '../types';
 import { ArrowLeft, Save } from 'lucide-react';
 
 interface AddAccountFormProps {
+  /** Cuenta existente: el formulario pasa a modo edicion. */
+  initial?: Account;
   onCancel: () => void;
   onSave: (account: Omit<Account, 'id' | 'lastUsed'>) => void;
 }
 
-export const AddAccountForm: React.FC<AddAccountFormProps> = ({ onCancel, onSave }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [selectedColor, setSelectedColor] = useState(AVATAR_COLORS[0]);
+export const AddAccountForm: React.FC<AddAccountFormProps> = ({ initial, onCancel, onSave }) => {
+  const isEdit = Boolean(initial);
+  const [name, setName] = useState(initial?.name ?? '');
+  const [email, setEmail] = useState(initial?.email ?? '');
+  const [selectedColor, setSelectedColor] = useState(initial?.avatarColor ?? AVATAR_COLORS[0]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name && email) {
       onSave({
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim(),
         avatarColor: selectedColor,
+        ...(initial?.notes !== undefined ? { notes: initial.notes } : {}),
       });
     }
   };
@@ -31,10 +35,16 @@ export const AddAccountForm: React.FC<AddAccountFormProps> = ({ onCancel, onSave
             className="flex items-center text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 mb-6 transition-colors"
         >
             <ArrowLeft size={16} className="mr-2" />
-            Back to Accounts
+            {isEdit ? 'Back to Account' : 'Back to Accounts'}
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">Connect New Account</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">{isEdit ? 'Edit Account' : 'Connect New Account'}</h2>
+
+        {isEdit && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-4 mb-6">
+            Name, email and color are labels inside GPT Switcher only. The saved ChatGPT and Codex sessions for this account are kept.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -87,7 +97,7 @@ export const AddAccountForm: React.FC<AddAccountFormProps> = ({ onCancel, onSave
                     className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow transition-colors"
                 >
                     <Save size={18} />
-                    <span>Save Account</span>
+                    <span>{isEdit ? 'Save Changes' : 'Save Account'}</span>
                 </button>
             </div>
         </form>

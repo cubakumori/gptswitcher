@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Persistencia
   getState: () => ipcRenderer.invoke('store:get'),
   saveState: (state) => ipcRenderer.invoke('store:set', state),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   // Codex CLI / IDE
   getCodexHome: (accountId) => ipcRenderer.invoke('codex:get-home', accountId),
   openCodexTerminal: (accountId) => ipcRenderer.invoke('codex:open-terminal', accountId),

@@ -25,6 +25,10 @@ export interface OpenWorkspace {
   target: WorkspaceTarget;
 }
 
+export interface AppSettings {
+  globalShortcuts: boolean;
+}
+
 export interface CodexHomeInfo {
   home: string;
   command: string;
@@ -50,6 +54,8 @@ declare global {
       onOpenWorkspacesChanged: (callback: (list: OpenWorkspace[]) => void) => () => void;
       getState: () => Promise<PersistedState>;
       saveState: (state: PersistedState) => Promise<PersistedState>;
+      getSettings: () => Promise<AppSettings>;
+      setSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>;
       getCodexHome: (accountId: string) => Promise<CodexHomeInfo | null>;
       openCodexTerminal: (accountId: string) => Promise<boolean>;
       copyCodexCommand: (accountId: string) => Promise<boolean>;

@@ -84,6 +84,11 @@ const App: React.FC = () => {
     setViewState(ViewState.LIST);
   };
 
+  const handleEditAccount = (id: string, data: Omit<Account, 'id' | 'lastUsed'>) => {
+    handleUpdateAccount(id, data);
+    setViewState(ViewState.LIST);
+  };
+
   const handleUpdateAccount = (id: string, updates: Partial<Account>) => {
       setAccounts(prev => prev.map(acc => 
         acc.id === id ? { ...acc, ...updates } : acc
@@ -112,6 +117,7 @@ const App: React.FC = () => {
   };
 
   const activeAccount = accounts.find(a => a.id === activeAccountId);
+  if (viewState === ViewState.EDIT && !activeAccount) setViewState(ViewState.LIST);
   const openAccountIds = new Set(openWorkspaces.map(w => w.partitionId));
 
   return (
@@ -124,6 +130,7 @@ const App: React.FC = () => {
           accounts={accounts}
           activeAccountId={activeAccountId}
           openAccountIds={openAccountIds}
+          platform={platform}
           onSelectAccount={handleSwitchAccount}
           onAddAccount={() => setViewState(ViewState.ADD)}
           onDeleteAccount={handleDeleteAccount}
@@ -141,12 +148,22 @@ const App: React.FC = () => {
           />
         )}
 
+        {viewState === ViewState.EDIT && activeAccount && (
+          <AddAccountForm
+              key={activeAccount.id}
+              initial={activeAccount}
+              onCancel={() => setViewState(ViewState.LIST)}
+              onSave={(data) => handleEditAccount(activeAccount.id, data)}
+          />
+        )}
+
         {viewState === ViewState.LIST && activeAccount && (
           <AccountDetail 
               account={activeAccount} 
               platform={platform}
               openTargets={openWorkspaces.filter(w => w.partitionId === activeAccount.id).map(w => w.target)}
               onUpdate={handleUpdateAccount}
+              onEdit={() => setViewState(ViewState.EDIT)}
           />
         )}
 

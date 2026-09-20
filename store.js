@@ -14,8 +14,18 @@ function filePath() {
   return path.join(app.getPath('userData'), 'accounts.json');
 }
 
+const DEFAULT_SETTINGS = { globalShortcuts: true };
+
 function emptyState() {
-  return { version: FILE_VERSION, accounts: [], activeAccountId: null, windowBounds: null };
+  return { version: FILE_VERSION, accounts: [], activeAccountId: null, windowBounds: null, settings: { ...DEFAULT_SETTINGS } };
+}
+
+function sanitizeSettings(raw) {
+  const out = { ...DEFAULT_SETTINGS };
+  if (raw && typeof raw === 'object') {
+    if (typeof raw.globalShortcuts === 'boolean') out.globalShortcuts = raw.globalShortcuts;
+  }
+  return out;
 }
 
 function load() {
@@ -27,6 +37,7 @@ function load() {
       accounts: sanitizeAccounts(raw.accounts),
       activeAccountId: typeof raw.activeAccountId === 'string' ? raw.activeAccountId : null,
       windowBounds: sanitizeBounds(raw.windowBounds),
+      settings: sanitizeSettings(raw.settings),
     };
   } catch {
     cache = emptyState();
@@ -100,4 +111,15 @@ function setWindowBounds(bounds) {
   persist();
 }
 
-module.exports = { getState, setState, hasAccounts, getWindowBounds, setWindowBounds };
+function getSettings() {
+  return { ...load().settings };
+}
+
+function setSettings(patch) {
+  const s = load();
+  s.settings = sanitizeSettings({ ...s.settings, ...(patch || {}) });
+  persist();
+  return getSettings();
+}
+
+module.exports = { getState, setState, hasAccounts, getWindowBounds, setWindowBounds, getSettings, setSettings };

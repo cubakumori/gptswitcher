@@ -19,6 +19,9 @@ App de escritorio multiplataforma (macOS y Windows) para gestionar y alternar en
 - **Gestion de ventanas**: multiples workspaces abiertos simultaneamente, con indicador de cuales estan abiertos; en macOS tambien accesibles desde el menu Window
 - **Enlaces externos**: los popups de login (Google, Apple, GitHub para Codex) se quedan dentro de la app; cualquier otro enlace se abre en el navegador del sistema
 - **Atajos de teclado**: `Cmd/Ctrl+1-9` para cambiar de cuenta, `Cmd/Ctrl+N` para agregar
+- **Atajos globales**: `Cmd/Ctrl+Alt+1-9` abre ChatGPT de la cuenta N desde cualquier app, `Cmd/Ctrl+Alt+0` muestra GPT Switcher. Se pueden desactivar desde el icono de la bandeja
+- **Icono en la bandeja / barra de menus**: acceso rapido a ChatGPT y Codex de cada cuenta sin abrir la ventana principal
+- **Editar cuenta**: cambia nombre, email o color sin perder la sesion guardada
 - **Seguridad**: comunicacion IPC via `preload.js` con `contextBridge` (sin `nodeIntegration`), CSP estricta en produccion y ningun recurso externo en el renderer
 
 ## Stack
@@ -47,6 +50,14 @@ npm run dev
 
 Lanza Vite en `http://localhost:5173` y Electron se conecta automaticamente.
 
+### Pruebas
+
+```bash
+npm test
+```
+
+Smoke test del proceso principal: arranca Electron con un `userData` temporal y comprueba los handlers IPC (store, ajustes, `CODEX_HOME`, workspaces, limpieza de sesion, posicion de ventana). No toca tus datos.
+
 ### Produccion (build + ejecutar)
 
 ```bash
@@ -70,7 +81,7 @@ Genera `.dmg`, `.zip` y/o `.exe` en `dist-electron/`. Para mas detalles sobre ar
 
 ```
 gptswitcher/
-├── main.js                  # Proceso principal de Electron (ventanas, IPC, CODEX_HOME)
+├── main.js                  # Proceso principal de Electron (ventanas, IPC, bandeja, atajos globales, CODEX_HOME)
 ├── store.js                 # Persistencia en <userData>/accounts.json
 ├── preload.js               # Bridge seguro de IPC (contextBridge)
 ├── App.tsx                  # Componente raiz de React
@@ -82,7 +93,9 @@ gptswitcher/
 │   ├── TitleBar.tsx         # Barra de titulo multiplataforma (macOS/Windows)
 │   ├── Sidebar.tsx          # Lista de cuentas con scroll
 │   ├── AccountDetail.tsx    # Detalle de cuenta + botones "Launch ChatGPT" / "Launch Codex"
-│   └── AddAccountForm.tsx   # Formulario de alta
+│   └── AddAccountForm.tsx   # Formulario de alta y edicion
+├── test/
+│   └── smoke.js             # npm test: smoke test del proceso principal
 └── services/
     └── storageService.ts    # Persistencia en localStorage
 ```
