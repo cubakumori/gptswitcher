@@ -6,9 +6,28 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const https = require('https');
+const { execFileSync } = require('child_process');
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gptswitcher-smoke-'));
 app.setPath('userData', path.join(tmpRoot, 'userData'));
+
+// Certificado autofirmado efimero para un servidor https local: los Client Hints solo viajan por
+// https y Chromium los omite si la conexion tiene errores de certificado, asi que el certificado
+// se declara de confianza por su hash SPKI antes de arrancar (misma tecnica que usa Puppeteer).
+const certDir = fs.mkdtempSync(path.join(tmpRoot, 'cert-'));
+const keyPath = path.join(certDir, 'key.pem');
+const certPath = path.join(certDir, 'cert.pem');
+let httpsReady = false;
+try {
+  execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-subj', '/CN=localhost',
+    '-addext', 'subjectAltName=DNS:localhost', '-keyout', keyPath, '-out', certPath], { stdio: 'ignore' });
+  const spki = execFileSync('sh', ['-c', `openssl x509 -in "${certPath}" -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64`]).toString().trim();
+  app.commandLine.appendSwitch('ignore-certificate-errors-spki-list', spki);
+  httpsReady = true;
+} catch (err) {
+  console.warn('openssl unavailable, https client-hint check will be skipped:', err.message);
+}
 
 const main = require(path.join(__dirname, '..', 'main.js'));
 
@@ -109,6 +128,60 @@ app.whenReady().then(async () => {
     await sleep(300);
     assert.deepStrictEqual(await invoke('get-open-workspaces'), []);
     assert.strictEqual(fs.existsSync(home), false);
+  });
+
+  await step('withChromeClientHints rewrites only the brand headers', () => {
+    const out = main.withChromeClientHints({
+      'User-Agent': 'x', 'sec-ch-ua': '"Not?A_Brand";v="24", "Chromium";v="152"',
+      'Sec-CH-UA-Full-Version-List': '"Chromium";v="152.0.0.0"', 'Sec-CH-UA-Platform': '"macOS"', 'Sec-CH-UA-Mobile': '?0',
+    });
+    assert(out['sec-ch-ua'].includes('"Google Chrome";v="'), out['sec-ch-ua']);
+    assert(out['sec-ch-ua'].includes('"Chromium";v="'));
+    assert(out['Sec-CH-UA-Full-Version-List'].includes('"Google Chrome";v="' + process.versions.chrome + '"'));
+    assert.strictEqual(out['Sec-CH-UA-Platform'], '"macOS"');
+    assert.strictEqual(out['Sec-CH-UA-Mobile'], '?0');
+    assert.strictEqual(out['User-Agent'], 'x');
+    // Sin cabeceras previas: se anaden en https, nunca en http
+    const added = main.withChromeClientHints({ 'User-Agent': 'x' }, 'https://accounts.google.com/');
+    assert(added['Sec-CH-UA'].includes('"Google Chrome";v="'));
+    assert.strictEqual(added['Sec-CH-UA-Mobile'], '?0');
+    assert(/^"(macOS|Windows|Linux)"$/.test(added['Sec-CH-UA-Platform']));
+    assert.deepStrictEqual(main.withChromeClientHints({ 'User-Agent': 'x' }, 'http://127.0.0.1/'), { 'User-Agent': 'x' });
+  });
+
+  await step('workspace window presents Chrome brands to page JS and in Sec-CH-UA over https', async () => {
+    assert(httpsReady, 'openssl not available');
+    const seen = {};
+    const server = https.createServer({ key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) }, (req, res) => {
+      seen.ua = req.headers['user-agent'];
+      seen.secChUa = req.headers['sec-ch-ua'];
+      seen.platform = req.headers['sec-ch-ua-platform'];
+      res.setHeader('Content-Type', 'text/html');
+      res.end('<title>probe</title>ok');
+    });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+
+    // Misma particion (ya configurada por el paso anterior) y mismo preload que una ventana de workspace real.
+    const win = new BrowserWindow({
+      show: false,
+      webPreferences: { partition: 'persist:acc-1', preload: path.join(__dirname, '..', 'workspace-preload.js'), nodeIntegration: false, contextIsolation: true },
+    });
+    await win.loadURL(`https://localhost:${server.address().port}/`);
+    const js = await win.webContents.executeJavaScript(`(async () => ({
+      ua: navigator.userAgent,
+      brands: navigator.userAgentData.brands.map(b => b.brand),
+      full: (await navigator.userAgentData.getHighEntropyValues(['fullVersionList'])).fullVersionList.map(b => b.brand + '/' + b.version),
+      json: JSON.stringify(navigator.userAgentData),
+    }))()`);
+    win.destroy();
+    server.close();
+    assert(!js.ua.includes('Electron'), js.ua);
+    assert(js.brands.includes('Google Chrome') && js.brands.includes('Chromium'), `brands: ${js.brands}`);
+    assert(js.full.includes('Google Chrome/' + process.versions.chrome), `full: ${js.full}`);
+    assert(js.json.includes('Google Chrome'), js.json);
+    assert(seen.ua && !seen.ua.includes('Electron'), `server UA: ${seen.ua}`);
+    assert(seen.secChUa && seen.secChUa.includes('"Google Chrome";v="'), `server sec-ch-ua: ${seen.secChUa}`);
+    assert(seen.platform, 'server did not receive Sec-CH-UA-Platform');
   });
 
   await step('main window bounds are saved and restorable', async () => {

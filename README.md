@@ -84,6 +84,7 @@ gptswitcher/
 ├── main.js                  # Proceso principal de Electron (ventanas, IPC, bandeja, atajos globales, CODEX_HOME)
 ├── store.js                 # Persistencia en <userData>/accounts.json
 ├── preload.js               # Bridge seguro de IPC (contextBridge)
+├── workspace-preload.js     # Identidad de navegador coherente con Chrome en los workspaces (login de Google)
 ├── App.tsx                  # Componente raiz de React
 ├── types.ts                 # Interfaces y tipos TypeScript
 ├── index.html               # Entry point

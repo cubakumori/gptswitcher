@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [0.6.1] - 2026-09-20
+
+### Fixed
+
+- **Login con Google bloqueado** ("Es posible que el navegador o la aplicacion no sean seguros"). Causa: el User-Agent ya se presentaba como Chrome, pero los Client Hints seguian delatando a Electron. Con el UA sobrescrito, Chromium deja de enviar las cabeceras `Sec-CH-UA` y `navigator.userAgentData` solo anuncia la marca "Chromium", una combinacion que Google trata como navegador embebido. Ahora:
+  - La sesion de cada particion anade o reescribe `Sec-CH-UA`, `Sec-CH-UA-Mobile`, `Sec-CH-UA-Platform` y `Sec-CH-UA-Full-Version-List` en las peticiones https con las marcas de Chrome real (`Chromium`, `Google Chrome`, version de Chromium de Electron)
+  - Nuevo `workspace-preload.js` en las ventanas de workspace y sus popups: expone `navigator.userAgentData` con esas mismas marcas via `contextBridge.executeInMainWorld`, sin abrir ninguna API a la pagina
+- Configuracion de sesion (UA + cabeceras) centralizada en `configureWorkspaceSession`, una sola vez por particion
+
+### Tests
+
+- `npm test` levanta un servidor https local con certificado efimero de confianza (hash SPKI) y comprueba que una ventana de workspace envia `Sec-CH-UA` con la marca `Google Chrome` y que el JavaScript de la pagina ve las mismas marcas
+
 ## [0.6.0] - 2026-09-20
 
 ### Added

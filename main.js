@@ -52,6 +52,50 @@ function shouldOpenInApp(rawUrl) {
   return false;
 }
 
+// --- Identidad de navegador coherente con Chrome ---
+// El UA ya se presenta como Chrome, pero Chromium sigue anunciando en los Client Hints
+// (Sec-CH-UA) solo la marca "Chromium". Google detecta la incoherencia y bloquea el login
+// ("Es posible que el navegador o la aplicacion no sean seguros"). Reescribimos las marcas
+// en las cabeceras y, via workspace-preload.js, en navigator.userAgentData.
+
+const CHROME_MAJOR = chromeVersion.split('.')[0];
+const CHROME_BRANDS = `"Chromium";v="${CHROME_MAJOR}", "Google Chrome";v="${CHROME_MAJOR}", "Not?A_Brand";v="24"`;
+const CHROME_FULL_VERSION_LIST = `"Chromium";v="${chromeVersion}", "Google Chrome";v="${chromeVersion}", "Not?A_Brand";v="24.0.0.0"`;
+
+const CHROME_PLATFORM = isMac ? '"macOS"' : isWin ? '"Windows"' : '"Linux"';
+
+// Nota: cuando el UA esta sobrescrito, Chromium omite por completo las cabeceras Sec-CH-UA.
+// Chrome real las envia siempre en https, asi que ademas de corregirlas hay que anadirlas.
+function withChromeClientHints(requestHeaders, url = '') {
+  const headers = { ...requestHeaders };
+  const present = {};
+  for (const name of Object.keys(headers)) present[name.toLowerCase()] = name;
+
+  if (present['sec-ch-ua']) headers[present['sec-ch-ua']] = CHROME_BRANDS;
+  if (present['sec-ch-ua-full-version-list']) headers[present['sec-ch-ua-full-version-list']] = CHROME_FULL_VERSION_LIST;
+
+  if (url.startsWith('https://')) {
+    if (!present['sec-ch-ua']) headers['Sec-CH-UA'] = CHROME_BRANDS;
+    if (!present['sec-ch-ua-mobile']) headers['Sec-CH-UA-Mobile'] = '?0';
+    if (!present['sec-ch-ua-platform']) headers['Sec-CH-UA-Platform'] = CHROME_PLATFORM;
+  }
+  return headers;
+}
+
+const configuredPartitions = new Set();
+
+function configureWorkspaceSession(partition) {
+  const ses = session.fromPartition(partition);
+  if (configuredPartitions.has(partition)) return ses;
+  configuredPartitions.add(partition);
+  // UA en la sesion, no solo en el webContents, para que los popups de login lo hereden.
+  ses.setUserAgent(CHROME_USER_AGENT);
+  ses.webRequest.onBeforeSendHeaders((details, callback) => {
+    callback({ requestHeaders: withChromeClientHints(details.requestHeaders, details.url) });
+  });
+  return ses;
+}
+
 // Registro de ventanas de workspace abiertas: Map<`${partitionId}::${target}`, BrowserWindow>
 const openWindows = new Map();
 
@@ -276,8 +320,8 @@ function openWorkspace({ partitionId, target, title }) {
   openWindows.delete(key);
 
   const partition = `persist:${partitionId}`;
-  // El UA se fija en la sesion, no solo en el webContents, para que los popups de login lo hereden.
-  session.fromPartition(partition).setUserAgent(CHROME_USER_AGENT);
+  configureWorkspaceSession(partition);
+  const workspacePreload = path.join(__dirname, 'workspace-preload.js');
 
   const childWin = new BrowserWindow({
     width: 1200,
@@ -286,6 +330,7 @@ function openWorkspace({ partitionId, target, title }) {
     icon: getIconPath(),
     webPreferences: {
       partition,
+      preload: workspacePreload,
       nodeIntegration: false,
       contextIsolation: true
     }
@@ -298,7 +343,7 @@ function openWorkspace({ partitionId, target, title }) {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
-          webPreferences: { partition, nodeIntegration: false, contextIsolation: true }
+          webPreferences: { partition, preload: workspacePreload, nodeIntegration: false, contextIsolation: true }
         }
       };
     }
@@ -531,4 +576,4 @@ app.on('activate', () => {
 });
 
 // Exportado solo para las pruebas (npm test); main.js sigue siendo el entry point de Electron.
-module.exports = { shouldOpenInApp, codexShellCommand, WORKSPACE_TARGETS };
+module.exports = { shouldOpenInApp, codexShellCommand, withChromeClientHints, WORKSPACE_TARGETS };
