@@ -41,8 +41,13 @@ function patchUserAgentData(brands, fullVersionList) {
   return true;
 }
 
+// En accounts.google.com la app se presenta como Firefox (ver main.js); ahi no se toca nada.
+const FIREFOX_IDENTITY_HOSTS = ['accounts.google.com'];
+const host = window.location.hostname;
+const firefoxIdentity = FIREFOX_IDENTITY_HOSTS.some((h) => host === h || host.endsWith('.' + h));
+
 try {
-  contextBridge.executeInMainWorld({ func: patchUserAgentData, args: [brands, fullVersionList] });
+  if (!firefoxIdentity) contextBridge.executeInMainWorld({ func: patchUserAgentData, args: [brands, fullVersionList] });
 } catch (err) {
   console.error('GPT Switcher: could not patch navigator.userAgentData', err);
 }

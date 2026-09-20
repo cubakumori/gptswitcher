@@ -18,6 +18,7 @@ App de escritorio multiplataforma (macOS y Windows) para gestionar y alternar en
 - **Notas de sesion**: campo de texto libre para apuntes por cuenta
 - **Gestion de ventanas**: multiples workspaces abiertos simultaneamente, con indicador de cuales estan abiertos; en macOS tambien accesibles desde el menu Window
 - **Enlaces externos**: los popups de login (Google, Apple, GitHub para Codex) se quedan dentro de la app; cualquier otro enlace se abre en el navegador del sistema
+- **Login con Google**: la app se presenta como Chrome en todos los sitios salvo en `accounts.google.com`, donde se presenta como Firefox para evitar el bloqueo "el navegador o la aplicacion no son seguros" que Google aplica a los motores Chromium embebidos
 - **Atajos de teclado**: `Cmd/Ctrl+1-9` para cambiar de cuenta, `Cmd/Ctrl+N` para agregar
 - **Atajos globales**: `Cmd/Ctrl+Alt+1-9` abre ChatGPT de la cuenta N desde cualquier app, `Cmd/Ctrl+Alt+0` muestra GPT Switcher. Se pueden desactivar desde el icono de la bandeja
 - **Icono en la bandeja / barra de menus**: acceso rapido a ChatGPT y Codex de cada cuenta sin abrir la ventana principal
@@ -84,7 +85,7 @@ gptswitcher/
 ├── main.js                  # Proceso principal de Electron (ventanas, IPC, bandeja, atajos globales, CODEX_HOME)
 ├── store.js                 # Persistencia en <userData>/accounts.json
 ├── preload.js               # Bridge seguro de IPC (contextBridge)
-├── workspace-preload.js     # Identidad de navegador coherente con Chrome en los workspaces (login de Google)
+├── workspace-preload.js     # Client Hints coherentes con Chrome en los workspaces (excepto accounts.google.com)
 ├── App.tsx                  # Componente raiz de React
 ├── types.ts                 # Interfaces y tipos TypeScript
 ├── index.html               # Entry point

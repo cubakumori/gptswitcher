@@ -64,12 +64,54 @@ const CHROME_FULL_VERSION_LIST = `"Chromium";v="${chromeVersion}", "Google Chrom
 
 const CHROME_PLATFORM = isMac ? '"macOS"' : isWin ? '"Windows"' : '"Linux"';
 
+// Google bloquea el login desde motores Chromium que no son Chrome ("Es posible que el navegador
+// o la aplicacion no sean seguros") aunque el UA y los Client Hints digan Chrome. La solucion que
+// mantiene qutebrowser (QtWebEngine, mismo problema) y que sigue funcionando en 2026 es presentar
+// un UA de Firefox unicamente en accounts.google.com: Firefox no envia Client Hints, asi que
+// Google no tiene nada que contrastar. El resto de sitios sigue viendo Chrome.
+const FIREFOX_VERSION = '156.0';
+const FIREFOX_USER_AGENT = isMac
+  ? `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:${FIREFOX_VERSION}) Gecko/20100101 Firefox/${FIREFOX_VERSION}`
+  : isWin
+    ? `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:${FIREFOX_VERSION}) Gecko/20100101 Firefox/${FIREFOX_VERSION}`
+    : `Mozilla/5.0 (X11; Linux x86_64; rv:${FIREFOX_VERSION}) Gecko/20100101 Firefox/${FIREFOX_VERSION}`;
+const FIREFOX_IDENTITY_HOSTS = ['accounts.google.com'];
+
+function usesFirefoxIdentity(rawUrl) {
+  try {
+    const { protocol, hostname } = new URL(rawUrl);
+    return protocol === 'https:' && FIREFOX_IDENTITY_HOSTS.some((h) => hostMatches(hostname, h));
+  } catch {
+    return false;
+  }
+}
+
+function userAgentForUrl(rawUrl) {
+  return usesFirefoxIdentity(rawUrl) ? FIREFOX_USER_AGENT : CHROME_USER_AGENT;
+}
+
 // Nota: cuando el UA esta sobrescrito, Chromium omite por completo las cabeceras Sec-CH-UA.
 // Chrome real las envia siempre en https, asi que ademas de corregirlas hay que anadirlas.
-function withChromeClientHints(requestHeaders, url = '') {
+// En los hosts con identidad Firefox ocurre lo contrario: UA de Firefox y ningun Client Hint.
+function identityHeadersFor(requestHeaders, url = '') {
   const headers = { ...requestHeaders };
   const present = {};
   for (const name of Object.keys(headers)) present[name.toLowerCase()] = name;
+
+  if (usesFirefoxIdentity(url)) {
+    for (const lower of Object.keys(present)) {
+      if (lower.startsWith('sec-ch-ua')) delete headers[present[lower]];
+    }
+    headers[present['user-agent'] || 'User-Agent'] = FIREFOX_USER_AGENT;
+    return headers;
+  }
+
+  // Fuera de esos hosts el UA de red es siempre el de Chrome, aunque el webContents venga de
+  // una pagina de Google (loadURL no dispara will-navigate y did-start-navigation llega tarde
+  // para la primera peticion).
+  if (present['user-agent'] && headers[present['user-agent']] !== CHROME_USER_AGENT) {
+    headers[present['user-agent']] = CHROME_USER_AGENT;
+  }
 
   if (present['sec-ch-ua']) headers[present['sec-ch-ua']] = CHROME_BRANDS;
   if (present['sec-ch-ua-full-version-list']) headers[present['sec-ch-ua-full-version-list']] = CHROME_FULL_VERSION_LIST;
@@ -91,7 +133,7 @@ function configureWorkspaceSession(partition) {
   // UA en la sesion, no solo en el webContents, para que los popups de login lo hereden.
   ses.setUserAgent(CHROME_USER_AGENT);
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
-    callback({ requestHeaders: withChromeClientHints(details.requestHeaders, details.url) });
+    callback({ requestHeaders: identityHeadersFor(details.requestHeaders, details.url) });
   });
   return ses;
 }
@@ -337,6 +379,7 @@ function openWorkspace({ partitionId, target, title }) {
   });
 
   openWindows.set(key, childWin);
+  trackIdentity(childWin.webContents);
 
   childWin.webContents.setWindowOpenHandler(({ url }) => {
     if (shouldOpenInApp(url)) {
@@ -353,6 +396,11 @@ function openWorkspace({ partitionId, target, title }) {
     return { action: 'deny' };
   });
 
+  childWin.webContents.on('did-create-window', (popup, { url }) => {
+    trackIdentity(popup.webContents);
+    popup.webContents.setUserAgent(userAgentForUrl(url));
+  });
+
   childWin.loadURL(targetDef.url);
 
   childWin.on('page-title-updated', (e) => {
@@ -365,6 +413,20 @@ function openWorkspace({ partitionId, target, title }) {
   });
 
   broadcastOpenWorkspaces();
+}
+
+// Ajusta navigator.userAgent del webContents al destino de cada navegacion, incluidas las
+// redirecciones (auth.openai.com -> accounts.google.com llega por 302).
+function trackIdentity(contents) {
+  const apply = (url) => {
+    const ua = userAgentForUrl(url);
+    if (contents.getUserAgent() !== ua) contents.setUserAgent(ua);
+  };
+  contents.on('will-navigate', (event, url) => apply(url));
+  contents.on('will-redirect', (event, url) => apply(url));
+  contents.on('did-start-navigation', (details) => {
+    if (details.isMainFrame) apply(details.url);
+  });
 }
 
 function closeWorkspacesFor(partitionId) {
@@ -576,4 +638,4 @@ app.on('activate', () => {
 });
 
 // Exportado solo para las pruebas (npm test); main.js sigue siendo el entry point de Electron.
-module.exports = { shouldOpenInApp, codexShellCommand, withChromeClientHints, WORKSPACE_TARGETS };
+module.exports = { shouldOpenInApp, codexShellCommand, identityHeadersFor, userAgentForUrl, trackIdentity, WORKSPACE_TARGETS };

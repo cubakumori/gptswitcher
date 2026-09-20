@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [0.6.2] - 2026-09-20
+
+### Fixed
+
+- **Login con Google, segundo intento.** Presentar Chrome de forma coherente (0.6.1) no fue suficiente: Google bloquea a los motores Chromium que no son Chrome aunque UA y Client Hints coincidan. La solucion que mantiene qutebrowser (QtWebEngine, mismo problema, confirmada por usuarios en 2025 y 2026) es presentar **Firefox unicamente en `accounts.google.com`**, que no envia Client Hints y por tanto no da a Google nada que contrastar. Ahora:
+  - Las peticiones a `accounts.google.com` llevan User-Agent de Firefox 156 y ninguna cabecera `Sec-CH-UA`
+  - `navigator.userAgent` del workspace cambia a Firefox al navegar o ser redirigido a ese host y vuelve a Chrome al salir (`trackIdentity`, tambien en los popups de login)
+  - El preload no parchea `navigator.userAgentData` en ese host
+  - El resto de sitios (ChatGPT, Codex, auth.openai.com, GitHub) siguen viendo Chrome con Client Hints coherentes
+- **Scripts de empaquetado por arquitectura**: `dist:arm64` y `dist:x64` compilaban las dos arquitecturas porque `build.mac.target` fijaba `arch` en la configuracion. Ahora la arquitectura la decide el flag del script; `npm run dist` pasa `--arm64 --x64`
+- Anadido `author` en package.json (electron-builder avisaba de su ausencia)
+
+### Tests
+
+- El smoke test resuelve `accounts.google.com` al servidor https local (`--host-resolver-rules`, solo en la prueba) y comprueba que ese host recibe Firefox sin Client Hints y que `localhost` sigue recibiendo Chrome, tanto en cabeceras como en `navigator.userAgent`, en la misma ventana
+
 ## [0.6.1] - 2026-09-20
 
 ### Fixed

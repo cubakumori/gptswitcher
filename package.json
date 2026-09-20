@@ -1,8 +1,9 @@
 {
   "name": "gpt-switcher",
   "productName": "GPT Switcher",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Desktop manager for ChatGPT and Codex accounts",
+  "author": "kumori",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -10,7 +11,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "dist": "vite build && electron-builder",
+    "dist": "vite build && electron-builder --mac --arm64 --x64",
     "dist:arm64": "vite build && electron-builder --mac --arm64",
     "dist:x64": "vite build && electron-builder --mac --x64",
     "dist:universal": "vite build && electron-builder --mac --universal",
@@ -39,20 +40,8 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
+        "dmg",
+        "zip"
       ],
       "icon": "icon.icns"
     },

@@ -21,9 +21,11 @@ const certPath = path.join(certDir, 'cert.pem');
 let httpsReady = false;
 try {
   execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-subj', '/CN=localhost',
-    '-addext', 'subjectAltName=DNS:localhost', '-keyout', keyPath, '-out', certPath], { stdio: 'ignore' });
+    '-addext', 'subjectAltName=DNS:localhost,DNS:accounts.google.com', '-keyout', keyPath, '-out', certPath], { stdio: 'ignore' });
   const spki = execFileSync('sh', ['-c', `openssl x509 -in "${certPath}" -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64`]).toString().trim();
   app.commandLine.appendSwitch('ignore-certificate-errors-spki-list', spki);
+  // Solo en la prueba: accounts.google.com apunta al servidor local para verificar la identidad Firefox.
+  app.commandLine.appendSwitch('host-resolver-rules', 'MAP accounts.google.com 127.0.0.1');
   httpsReady = true;
 } catch (err) {
   console.warn('openssl unavailable, https client-hint check will be skipped:', err.message);
@@ -130,8 +132,8 @@ app.whenReady().then(async () => {
     assert.strictEqual(fs.existsSync(home), false);
   });
 
-  await step('withChromeClientHints rewrites only the brand headers', () => {
-    const out = main.withChromeClientHints({
+  await step('identityHeadersFor rewrites only the brand headers', () => {
+    const out = main.identityHeadersFor({
       'User-Agent': 'x', 'sec-ch-ua': '"Not?A_Brand";v="24", "Chromium";v="152"',
       'Sec-CH-UA-Full-Version-List': '"Chromium";v="152.0.0.0"', 'Sec-CH-UA-Platform': '"macOS"', 'Sec-CH-UA-Mobile': '?0',
     });
@@ -140,13 +142,24 @@ app.whenReady().then(async () => {
     assert(out['Sec-CH-UA-Full-Version-List'].includes('"Google Chrome";v="' + process.versions.chrome + '"'));
     assert.strictEqual(out['Sec-CH-UA-Platform'], '"macOS"');
     assert.strictEqual(out['Sec-CH-UA-Mobile'], '?0');
-    assert.strictEqual(out['User-Agent'], 'x');
+    assert(/Chrome\//.test(out['User-Agent']) && !/Electron/.test(out['User-Agent']), 'UA normalised to Chrome outside Google');
     // Sin cabeceras previas: se anaden en https, nunca en http
-    const added = main.withChromeClientHints({ 'User-Agent': 'x' }, 'https://accounts.google.com/');
+    const added = main.identityHeadersFor({ 'User-Agent': 'x' }, 'https://chatgpt.com/');
     assert(added['Sec-CH-UA'].includes('"Google Chrome";v="'));
     assert.strictEqual(added['Sec-CH-UA-Mobile'], '?0');
     assert(/^"(macOS|Windows|Linux)"$/.test(added['Sec-CH-UA-Platform']));
-    assert.deepStrictEqual(main.withChromeClientHints({ 'User-Agent': 'x' }, 'http://127.0.0.1/'), { 'User-Agent': 'x' });
+    const plain = main.identityHeadersFor({ 'User-Agent': 'x' }, 'http://127.0.0.1/');
+    assert.deepStrictEqual(Object.keys(plain), ['User-Agent'], 'no Client Hints over http');
+  });
+
+  await step('accounts.google.com gets a Firefox identity and no Client Hints', () => {
+    const out = main.identityHeadersFor({ 'user-agent': 'chrome', 'sec-ch-ua': 'x', 'Sec-CH-UA-Platform': 'y' }, 'https://accounts.google.com/signin');
+    assert.deepStrictEqual(out, { 'user-agent': main.userAgentForUrl('https://accounts.google.com/') });
+    assert(/Firefox\/\d+/.test(main.userAgentForUrl('https://accounts.google.com/v3/signin')));
+    assert(!/Firefox/.test(main.userAgentForUrl('https://chatgpt.com/')));
+    assert(!/Firefox/.test(main.userAgentForUrl('https://auth.openai.com/')));
+    assert(!/Firefox/.test(main.userAgentForUrl('http://accounts.google.com/')), 'never over plain http');
+    assert(!/Firefox/.test(main.userAgentForUrl('https://accounts.google.com.evil.com/')));
   });
 
   await step('workspace window presents Chrome brands to page JS and in Sec-CH-UA over https', async () => {
@@ -182,6 +195,36 @@ app.whenReady().then(async () => {
     assert(seen.ua && !seen.ua.includes('Electron'), `server UA: ${seen.ua}`);
     assert(seen.secChUa && seen.secChUa.includes('"Google Chrome";v="'), `server sec-ch-ua: ${seen.secChUa}`);
     assert(seen.platform, 'server did not receive Sec-CH-UA-Platform');
+  });
+
+  await step('workspace window presents Firefox to accounts.google.com (headers and navigator.userAgent)', async () => {
+    assert(httpsReady, 'openssl not available');
+    const seen = {};
+    const server = https.createServer({ key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) }, (req, res) => {
+      seen[req.headers.host.split(':')[0]] = { ua: req.headers['user-agent'], secChUa: req.headers['sec-ch-ua'] };
+      res.setHeader('Content-Type', 'text/html');
+      res.end('<title>probe</title>ok');
+    });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const win = new BrowserWindow({
+      show: false,
+      webPreferences: { partition: 'persist:acc-1', preload: path.join(__dirname, '..', 'workspace-preload.js'), nodeIntegration: false, contextIsolation: true },
+    });
+    main.trackIdentity(win.webContents);
+    await win.loadURL(`https://accounts.google.com:${port}/signin`);
+    const google = await win.webContents.executeJavaScript('({ ua: navigator.userAgent, brands: navigator.userAgentData.brands.map(b => b.brand) })');
+    await win.loadURL(`https://localhost:${port}/`);
+    const back = await win.webContents.executeJavaScript('navigator.userAgent');
+    win.destroy();
+    server.close();
+    assert(/Firefox\//.test(seen['accounts.google.com'].ua), `server saw: ${seen['accounts.google.com'].ua}`);
+    assert.strictEqual(seen['accounts.google.com'].secChUa, undefined, 'no Sec-CH-UA for Google');
+    assert(/Firefox\//.test(google.ua), `navigator.userAgent on Google: ${google.ua}`);
+    assert(!google.brands.includes('Google Chrome'), 'no Chrome brand patch on Google');
+    assert(/Chrome\//.test(seen.localhost.ua) && !/Firefox/.test(seen.localhost.ua), `server saw: ${seen.localhost.ua}`);
+    assert(seen.localhost.secChUa && seen.localhost.secChUa.includes('Google Chrome'));
+    assert(/Chrome\//.test(back) && !/Firefox/.test(back), `navigator.userAgent back on Chrome site: ${back}`);
   });
 
   await step('main window bounds are saved and restorable', async () => {
