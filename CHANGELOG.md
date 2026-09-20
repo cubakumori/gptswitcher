@@ -6,6 +6,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [0.5.0] - 2026-09-20
+
+### Codex CLI e IDE
+
+- Cada cuenta tiene su propio `CODEX_HOME` en `<userData>/codex/<id>` con un `config.toml` que fija `cli_auth_credentials_store = "file"`, de modo que la CLI de Codex y la extension del IDE pueden estar logueadas con cuentas distintas
+- Nueva tarjeta **Codex CLI & IDE** en el detalle de cuenta: muestra el comando, lo copia al portapapeles o abre una terminal (Terminal.app en macOS, PowerShell en Windows) con la variable ya exportada
+- Al borrar una cuenta tambien se elimina su `CODEX_HOME`
+
+### Persistencia
+
+- Las cuentas se guardan en `<userData>/accounts.json` gestionado por el proceso principal (`store.js`), con escritura atomica y saneado de campos. El renderer ya no usa localStorage
+- Migracion automatica: la primera vez que arranca sin fichero, importa las cuentas del localStorage antiguo y lo limpia
+- Se persiste la cuenta seleccionada (`activeAccountId`); eliminado el campo redundante `isActive`
+- La ventana principal recuerda posicion y tamano entre arranques (se valida contra la pantalla disponible)
+
+### Build y seguridad
+
+- Tailwind pasa del CDN a `@tailwindcss/vite` (v4): CSS compilado en el bundle, sin peticiones de red al arrancar ni compilador JIT en el renderer
+- Eliminada la carga de Inter desde Google Fonts; se usa la fuente del sistema
+- Content-Security-Policy en el build de produccion (`script-src 'self'`, sin conexiones externas) inyectada por un plugin de Vite
+- Actualizados Electron 39 → 44, Vite 7 → 8, React 18 → 19, lucide-react 0.300 → 1.x, electron-builder y TypeScript
+- `vite.config.ts` renombrado a `.mts`; `engines.node >= 22.12`
+- Eliminado `metadata.json`, resto del scaffold de AI Studio
+
 ## [0.4.0] - 2026-09-20
 
 ### Codex

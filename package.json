@@ -1,8 +1,11 @@
 {
   "name": "gpt-switcher",
   "productName": "GPT Switcher",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Desktop manager for ChatGPT and Codex accounts",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "main": "main.js",
   "scripts": {
     "dev": "vite",
@@ -15,16 +18,20 @@
     "dist:win-arm64": "vite build && electron-builder --win --arm64"
   },
   "dependencies": {
-    "lucide-react": "^0.300.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "lucide-react": "^1.47.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "electron": "^39.2.4",
-    "electron-builder": "^26.8.1",
-    "typescript": "^5.4.0",
-    "vite": "^7.2.6"
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
   },
   "build": {
     "appId": "com.gptswitcher.app",
@@ -62,6 +69,7 @@
       "dist/**/*",
       "main.js",
       "preload.js",
+      "store.js",
       "package.json",
       "icon.ico",
       "icon.icns",
@@ -69,7 +77,7 @@
       "!**/*.ts",
       "!**/*.tsx",
       "!src/**/*",
-      "!vite.config.ts",
+      "!vite.config.*",
       "!tsconfig.*"
     ],
     "directories": {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Account, WorkspaceTarget } from '../types';
-import { ExternalLink, ShieldCheck, Clock, Activity, Loader2, Command, Terminal, MessageSquare } from 'lucide-react';
+import { Account, CodexHomeInfo, WorkspaceTarget } from '../types';
+import { ExternalLink, ShieldCheck, Clock, Activity, Loader2, Command, Terminal, MessageSquare, SquareTerminal, Copy, Check } from 'lucide-react';
 
 interface AccountDetailProps {
   account: Account;
@@ -35,13 +35,38 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, platform,
   const [launching, setLaunching] = useState<WorkspaceTarget | null>(null);
   const [isEdited, setIsEdited] = useState(false);
   const [notes, setNotes] = useState(account.notes || '');
+  const [codexHome, setCodexHome] = useState<CodexHomeInfo | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const isMac = platform === 'darwin';
+  const hasCodexCli = Boolean(window.electronAPI?.getCodexHome);
 
   useEffect(() => {
     setNotes(account.notes || '');
     setIsEdited(false);
+    setCopied(false);
+    setCodexHome(null);
+    if (!window.electronAPI?.getCodexHome) return;
+    let cancelled = false;
+    window.electronAPI.getCodexHome(account.id).then((info) => {
+      if (!cancelled) setCodexHome(info);
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, [account.id]);
+
+  const handleOpenTerminal = () => {
+    window.electronAPI?.openCodexTerminal(account.id).catch(() => {});
+  };
+
+  const handleCopyCommand = async () => {
+    const api = window.electronAPI;
+    if (!api) return;
+    const ok = await api.copyCodexCommand(account.id).catch(() => false);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
 
   const handleLaunch = (target: WorkspaceTarget) => {
     setLaunching(target);
@@ -105,7 +130,7 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, platform,
                 className={`
                 w-full flex items-center justify-center space-x-3 px-6 py-3 rounded-xl font-bold shadow-lg transition-all duration-200 text-base text-white active:scale-[0.99]
                 ${launching === 'chatgpt'
-                    ? 'bg-gray-100 !text-gray-400 cursor-not-allowed dark:bg-gray-800 shadow-none' 
+                    ? 'bg-gray-100 text-gray-400! cursor-not-allowed dark:bg-gray-800 shadow-none' 
                     : buttonStyle
                 }
                 `}
@@ -195,6 +220,48 @@ export const AccountDetail: React.FC<AccountDetailProps> = ({ account, platform,
                 />
             </div>
             
+
+            {/* Codex CLI / IDE */}
+            {hasCodexCli && (
+              <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center space-x-2">
+                      <SquareTerminal size={16} className="text-gray-500 shrink-0" />
+                      <h3 className="font-semibold text-gray-800 dark:text-gray-100">Codex CLI &amp; IDE</h3>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      This account has its own <code className="font-mono">CODEX_HOME</code>, so the Codex CLI and the IDE extension
+                      can stay signed in here without touching your other accounts. Run <code className="font-mono">codex</code> once in
+                      that terminal and choose "Sign in with ChatGPT".
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <button
+                      onClick={handleCopyCommand}
+                      disabled={!codexHome}
+                      title="Copy the shell command that sets CODEX_HOME and starts codex"
+                      className="flex items-center space-x-1 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                    >
+                      {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                      <span>{copied ? 'Copied' : 'Copy command'}</span>
+                    </button>
+                    <button
+                      onClick={handleOpenTerminal}
+                      disabled={!codexHome}
+                      className="flex items-center space-x-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white disabled:opacity-50 transition-colors"
+                    >
+                      <Terminal size={14} />
+                      <span>Open Terminal</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="font-mono text-[11px] text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2 truncate select-text">
+                  {codexHome ? codexHome.command : 'Preparing…'}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                      <div className="text-xs text-gray-500 uppercase font-semibold mb-1">Session Partition ID</div>

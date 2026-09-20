@@ -4,8 +4,12 @@ export interface Account {
   email: string;
   avatarColor: string;
   lastUsed: number;
-  isActive: boolean;
   notes?: string;
+}
+
+export interface PersistedState {
+  accounts: Account[];
+  activeAccountId: string | null;
 }
 
 export enum ViewState {
@@ -19,6 +23,11 @@ export type WorkspaceTarget = 'chatgpt' | 'codex';
 export interface OpenWorkspace {
   partitionId: string;
   target: WorkspaceTarget;
+}
+
+export interface CodexHomeInfo {
+  home: string;
+  command: string;
 }
 
 export const AVATAR_COLORS = [
@@ -39,6 +48,11 @@ declare global {
       clearAccountSession: (partitionId: string) => Promise<boolean>;
       getOpenWorkspaces: () => Promise<OpenWorkspace[]>;
       onOpenWorkspacesChanged: (callback: (list: OpenWorkspace[]) => void) => () => void;
+      getState: () => Promise<PersistedState>;
+      saveState: (state: PersistedState) => Promise<PersistedState>;
+      getCodexHome: (accountId: string) => Promise<CodexHomeInfo | null>;
+      openCodexTerminal: (accountId: string) => Promise<boolean>;
+      copyCodexCommand: (accountId: string) => Promise<boolean>;
       minimizeWindow: () => void;
       maximizeWindow: () => void;
       closeWindow: () => void;

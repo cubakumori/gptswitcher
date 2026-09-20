@@ -12,23 +12,26 @@ App de escritorio multiplataforma (macOS y Windows) para gestionar y alternar en
 - **Sesiones aisladas**: cada cuenta se ejecuta en una particion persistente con cookies y sesiones independientes
 - **Lanzamiento en un clic**: abre ChatGPT o Codex (`chatgpt.com/codex`) por cuenta sin necesidad de re-autenticarte; ambos comparten la misma sesion aislada
 - **Borrado limpio**: eliminar una cuenta cierra sus ventanas y borra cookies, storage y cache de su particion
-- **Persistencia**: datos de cuenta y sesiones se guardan automaticamente entre reinicios
+- **Persistencia**: cuentas, cuenta seleccionada y posicion de la ventana se guardan en `accounts.json` dentro de la carpeta de datos de la app; las sesiones web viven en particiones persistentes de Electron
+- **Codex CLI e IDE por cuenta**: cada cuenta tiene su propio `CODEX_HOME`; desde la app puedes copiar el comando o abrir una terminal ya configurada para iniciar sesion en Codex con esa cuenta
 - **Multiplataforma**: macOS (traffic lights nativos) y Windows (barra de titulo custom con botones minimizar/maximizar/cerrar)
 - **Notas de sesion**: campo de texto libre para apuntes por cuenta
 - **Gestion de ventanas**: multiples workspaces abiertos simultaneamente, con indicador de cuales estan abiertos; en macOS tambien accesibles desde el menu Window
 - **Enlaces externos**: los popups de login (Google, Apple, GitHub para Codex) se quedan dentro de la app; cualquier otro enlace se abre en el navegador del sistema
 - **Atajos de teclado**: `Cmd/Ctrl+1-9` para cambiar de cuenta, `Cmd/Ctrl+N` para agregar
-- **Seguridad**: comunicacion IPC via `preload.js` con `contextBridge` (sin `nodeIntegration`)
+- **Seguridad**: comunicacion IPC via `preload.js` con `contextBridge` (sin `nodeIntegration`), CSP estricta en produccion y ningun recurso externo en el renderer
 
 ## Stack
 
 - **Electron** — app de escritorio con aislamiento via particiones
 - **React 18** + **TypeScript** — UI
 - **Vite** — bundler y dev server
-- **Tailwind CSS** (CDN) — estilos
+- **Tailwind CSS v4** (`@tailwindcss/vite`, compilado en el build) — estilos
 - **Lucide React** — iconos
 
 ## Instalacion
+
+Requiere Node.js 22.12 o superior.
 
 ```bash
 npm install
@@ -67,11 +70,13 @@ Genera `.dmg`, `.zip` y/o `.exe` en `dist-electron/`. Para mas detalles sobre ar
 
 ```
 gptswitcher/
-├── main.js                  # Proceso principal de Electron
+├── main.js                  # Proceso principal de Electron (ventanas, IPC, CODEX_HOME)
+├── store.js                 # Persistencia en <userData>/accounts.json
 ├── preload.js               # Bridge seguro de IPC (contextBridge)
 ├── App.tsx                  # Componente raiz de React
 ├── types.ts                 # Interfaces y tipos TypeScript
 ├── index.html               # Entry point
+├── index.css                # Tailwind + estilos globales
 ├── index.tsx                # Mount de React
 ├── components/
 │   ├── TitleBar.tsx         # Barra de titulo multiplataforma (macOS/Windows)

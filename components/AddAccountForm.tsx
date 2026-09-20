@@ -4,7 +4,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 
 interface AddAccountFormProps {
   onCancel: () => void;
-  onSave: (account: Omit<Account, 'id' | 'lastUsed' | 'isActive'>) => void;
+  onSave: (account: Omit<Account, 'id' | 'lastUsed'>) => void;
 }
 
 export const AddAccountForm: React.FC<AddAccountFormProps> = ({ onCancel, onSave }) => {

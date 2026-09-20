@@ -4,8 +4,8 @@ Guia para generar los instalables de GPT Switcher para macOS y Windows.
 
 ## Requisitos previos
 
-- Node.js 18+
-- npm 9+
+- Node.js 22.12+
+- npm 10+
 - macOS o Windows (para compilacion nativa; cross-compilation parcial desde macOS)
 
 ## Arquitecturas

@@ -4,43 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GPTSwitcher</title>
-    <!-- Tailwind CDN se mantiene para simplificar la instalación sin configuración de PostCSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: #ffffff;
-        overflow: hidden;
-        margin: 0;
-        padding: 0;
-        user-select: none;
-      }
-      /* Custom scrollbar for macOS look */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: rgba(156, 163, 175, 0.5);
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(156, 163, 175, 0.8);
-      }
-
-      /* Electron Drag Regions */
-      .titlebar-drag-region {
-        -webkit-app-region: drag;
-        user-select: none;
-      }
-      .titlebar-no-drag {
-        -webkit-app-region: no-drag;
-      }
-    </style>
   </head>
   <body>
     <div id="root"></div>
